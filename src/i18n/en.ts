@@ -209,6 +209,9 @@ export const en = {
   'node.stoppedPlaceholder': '(generation stopped)',
   'node.failedPlaceholder': '_Generation failed._',
   'node.emptyResponse': 'The model returned nothing. Likely a transient upstream hiccup - hit retry.',
+  'node.answerCutLength': 'This answer stopped at the model\'s output limit, so it is incomplete. Ask again, or narrow the question so the answer fits.',
+  'node.answerCutSteps': 'This turn ended while the model was still searching, so it never wrote its conclusion. Turn the searches off for this node, or ask again.',
+  'node.failureReason': 'Why it stopped: {message}',
   'node.backToVersionTitle': 'A failed run never destroys history: switch back to an earlier version',
 
   // Content palette + content nodes (canvas material)

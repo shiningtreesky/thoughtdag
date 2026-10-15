@@ -148,11 +148,16 @@ export async function distillSegment(
     ? `[${lang === 'zh' ? '前情提要' : 'Brief of earlier runs'}]\n${prior}\n\n[${lang === 'zh' ? '本段轮次' : 'This run'}]\n${lines}`
     : lines;
 
+  // Generous on purpose: distill is a background pass, but a thinking model can
+  // stay silent on content for a long first stretch, and a long segment takes a
+  // long time to summarise. Reasoning frames re-arm this (see onReasoning
+  // below), so it fires on a genuinely dead stream — not on a slow model.
+  const IDLE_LIMIT_MS = 600_000; // 10 minutes with no frame of any kind
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
   let rejectIdle: ((e: Error) => void) | undefined;
   const armIdle = () => {
     clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => rejectIdle?.(new Error(lang === 'zh' ? '蒸馏停滞（3 分钟无输出），换个更快的模型试试' : 'distill stalled (3 min without output) — try a faster model')), 180_000);
+    idleTimer = setTimeout(() => rejectIdle?.(new Error(lang === 'zh' ? '蒸馏停滞（10 分钟无输出），换个更快的模型试试' : 'distill stalled (10 min without output) — try a faster model')), IDLE_LIMIT_MS);
   };
   const idleGate = new Promise<never>((_, reject) => { rejectIdle = reject; });
   armIdle();

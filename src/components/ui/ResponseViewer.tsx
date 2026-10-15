@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { GitBranch, Loader2, Send, Star, X } from 'lucide-react';
+import { AlertTriangle, GitBranch, Loader2, Send, Square, Star, X } from 'lucide-react';
 import { useStore } from '../../store';
 import { useUiStore } from '../../lib/ui-store';
 import { Markdown, HighlightedMarkdown } from '../Markdown';
@@ -114,6 +114,18 @@ export default function ResponseViewer() {
       <div ref={shellRef} className="relative bg-surface rounded-2xl shadow-2xl border border-line w-[min(920px,92vw)] h-[92vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3 px-6 py-4 border-b border-line bg-card shrink-0">
           <div className="flex-1 min-w-0 text-sm font-semibold text-ink leading-snug line-clamp-2">{data.question}</div>
+          {/* The card's Stop button sits behind this full-screen shell, so a
+              stuck turn had no reachable way out from inside the reading view —
+              and while the node counts as generating, the follow-up below is dead. */}
+          {data.isLoading && canInteract && (
+            <button
+              onClick={() => useStore.getState().stopGeneration(nodeId)}
+              title={t('actions.stop')}
+              className="w-7 h-7 rounded-lg bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors shrink-0"
+            >
+              <Square size={11} strokeWidth={1.75} fill="currentColor" />
+            </button>
+          )}
           <button onClick={close} title={t('panel.close')} className="w-7 h-7 rounded-lg text-ink-faint hover:bg-wash hover:text-ink flex items-center justify-center transition-colors shrink-0">
             <X size={16} strokeWidth={1.75} />
           </button>
@@ -140,6 +152,14 @@ export default function ResponseViewer() {
                   <Markdown base={data.importSource?.cwd}>{data.response}</Markdown>
                 )}
                 {data.isLoading && <span className="inline-block w-2 h-4 bg-accent animate-pulse rounded-sm ml-0.5" />}
+              </div>
+            )}
+            {/* The model stopped before it was done — the reading view is where
+                that has to be said, or a half answer reads as a whole one. */}
+            {!data.isLoading && data.response && data.truncateds?.[data.responseIndex] && (
+              <div className="mt-4 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                <AlertTriangle size={14} strokeWidth={1.75} className="shrink-0 mt-0.5" />
+                <span>{t(data.truncateds[data.responseIndex] === 'steps' ? 'node.answerCutSteps' : 'node.answerCutLength')}</span>
               </div>
             )}
           </div>

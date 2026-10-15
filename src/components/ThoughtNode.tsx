@@ -402,6 +402,14 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
         // editors (question/response) stop propagation to stay inline
         setSelectedNodeId(id);
         useUiStore.getState().setPanelOpen(true);
+        // ...and the reading view in the same gesture, so the answer is
+        // readable full-size without hunting for the card's button. Guarded by
+        // the button's own appearance rule: a node with no answer (a material
+        // node, an empty card) would otherwise open a full-screen shell with
+        // nothing in it, which the person then has to dismiss.
+        if ((data.response || data.isLoading) && !isViewerMode) {
+          useUiStore.getState().setResponseViewerNodeId(id);
+        }
       }}
       onDrop={async (e) => {
         e.preventDefault();

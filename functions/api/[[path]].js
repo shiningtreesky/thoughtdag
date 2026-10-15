@@ -19,6 +19,20 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 // larger than a model's allowed max makes some upstreams reject outright.
 const isOpenRouter = (baseURL) => /openrouter\.ai/i.test(String(baseURL));
 
+// Step budget of one generation (see stopWhen below), shared with the
+// truncation report so the two cannot drift apart. Mirror of server.mjs.
+const MAX_STEPS = 5;
+
+// A cut-off answer must not read as a finished one: 'length' is the provider's
+// output ceiling, 'steps' is a turn that ended on a tool call with its budget
+// spent and never wrote the answer. Mirror of server.mjs.
+const truncationOf = async (r, maxSteps) => {
+  const finish = await r.finishReason.catch(() => 'unknown');
+  if (finish === 'length') return 'length';
+  if (maxSteps && finish === 'tool-calls' && (await r.steps.catch(() => [])).length >= maxSteps) return 'steps';
+  return null;
+};
+
 // ── per-request provider registry (mirror of server.mjs providerEntries) ──
 function providerEntries(providers) {
   const out = {};
@@ -323,7 +337,7 @@ async function handleStream(body) {
           // No smoothStream here: its per-word re-chunking multiplies the
           // delta count ~10\u00d7 \u2014 pure CPU cost on Workers with no upside once
           // deltas are batched anyway.
-          stopWhen: stepCountIs(5),
+          stopWhen: stepCountIs(MAX_STEPS),
           prepareStep: ({ stepNumber }) =>
             stepNumber >= 3 && tools
               ? {
@@ -356,8 +370,19 @@ async function handleStream(body) {
           else if (part.type === 'reasoning-delta' && part.text) push('reasoning', part.text);
           else if (part.type === 'error') throw part.error instanceof Error ? part.error : new Error(String(part.errorText ?? part.error));
         }
-        if (holdback && !holdback.startsWith('<tool_call')) { emittedChars += holdback.length; push('text', holdback); }
+        // Stream over: no later chunk can complete a held block, so an opener
+        // still standing is markup that will never close. Drop the aborted call
+        // and keep everything else — the tail of a real answer must not be
+        // swallowed because it happened to begin with an opener.
+        if (holdback) {
+          const tail = holdback
+            .replace(/<tool_call>[\s\S]*?<\/tool_call>\n?/g, '')
+            .replace(/<tool_call[\s\S]*$/, '');
+          if (tail) { emittedChars += tail.length; push('text', tail); }
+        }
         flushBuf();
+
+        let truncatedReason = await truncationOf(result, MAX_STEPS);
 
         // :online sometimes closes with zero text (thinking models most of
         // all) — retry once with the plain model so the visitor always gets
@@ -373,6 +398,7 @@ async function handleStream(body) {
             else if (part.type === 'error') throw part.error instanceof Error ? part.error : new Error(String(part.errorText ?? part.error));
           }
           flushBuf();
+          truncatedReason = await truncationOf(retry);
         }
 
         // synthesis fallback: searched but wrote almost nothing after it
@@ -398,10 +424,12 @@ async function handleStream(body) {
             providerOptions: entry.providerOptions,
           });
           for await (const part of synth.fullStream) {
-            if (part.type === 'text-delta') push('text', part.text);
+            if (part.type === 'text-delta') { emittedChars += part.text.length; push('text', part.text); }
             else if (part.type === 'reasoning-delta' && part.text) push('reasoning', part.text);
           }
           flushBuf();
+          // the synthesis pass is the answer the visitor reads
+          truncatedReason = await truncationOf(synth);
         }
 
         if (emittedChars === 0) {
@@ -410,6 +438,8 @@ async function handleStream(body) {
           const fr = await result.finishReason.catch(() => 'unknown');
           write({ error: `Model produced no text (finish: ${fr}, model: ${actualModelId}${useOnline ? ' via :online' : ''})` });
         }
+        // Say it out loud: a cut-off answer otherwise reads exactly like a whole one.
+        if (truncatedReason && emittedChars > 0) write({ truncated: truncatedReason });
         if (sources.length > 0) write({ sources });
         const usage = await result.totalUsage;
         if (usage) write({ usage });
@@ -439,6 +469,8 @@ async function handleStream(body) {
               flushBuf();
               const usage = await rescue.totalUsage.catch(() => null);
               if (usage) write({ usage });
+              const rescueCut = await truncationOf(rescue);
+              if (rescueCut) write({ truncated: rescueCut });
               controller.enqueue(enc.encode('data: [DONE]\n\n'));
               controller.close();
               return;

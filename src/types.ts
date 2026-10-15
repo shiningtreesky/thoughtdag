@@ -180,6 +180,12 @@ export interface Reference {
   date?: string;
 }
 
+/** Why an answer stopped before it was finished. 'length' = the model ran out
+    of output tokens mid-answer; 'steps' = the tool loop spent its whole step
+    budget and never got to write the answer. Reported by the lane that ran the
+    turn, never inferred from the text. */
+export type TruncationReason = 'length' | 'steps';
+
 export interface ThoughtData extends Record<string, unknown> {
   question: string;
   response: string;
@@ -310,6 +316,13 @@ export interface ThoughtData extends Record<string, unknown> {
   /** Per version: this answer used the model gateway's built-in web search
       (no tool pings from the proxy, so the stream flags it once instead). */
   gatewaySearches?: (boolean | undefined)[];
+  /** Per version: why this answer stopped early, or undefined when it finished
+      on its own. Set only by the lane that ran the turn — a human-edited answer
+      keeps whatever its generation reported. */
+  truncateds?: (TruncationReason | undefined)[];
+  /** Per version: the error text that ended a failed generation, kept so the
+      reason survives the toast and can be read next to the half answer. */
+  failureReasons?: (string | undefined)[];
   /** per version: the effort level an agent turn actually ran at (its own record); absent for API models */
   generatedEfforts?: (string | undefined | null)[];
   /** Epistemic move per version: insight (default, unmarked) | ruleout |

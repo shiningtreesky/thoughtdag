@@ -6,7 +6,7 @@ import { useUiStore } from '../../lib/ui-store';
 import { generateId } from '../../utils';
 import { copyText } from '../../lib/export';
 import { Markdown, HighlightedMarkdown } from '../Markdown';
-import { useT } from '../../i18n';
+import { useT, fmt } from '../../i18n';
 import { isViewerMode } from '../../lib/viewer';
 import { collectExploreMarksKey, type ExploreMark } from '../../lib/explore-marks';
 import ReasoningDisclosure from '../ui/ReasoningDisclosure';
@@ -246,6 +246,15 @@ export default function ResponseSection({
         </div>
       )}
 
+      {/* The model stopped before it was done: name which ceiling it hit, and
+          what to do about it. A cut-off answer otherwise reads as a finished one. */}
+      {data.response && !data.isLoading && !data.isEditingResponse && !data.generationFailed && data.truncateds?.[data.responseIndex] && (
+        <div className="mt-2 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          <AlertTriangle size={14} strokeWidth={1.75} className="shrink-0 mt-0.5" />
+          <span>{t(data.truncateds[data.responseIndex] === 'steps' ? 'node.answerCutSteps' : 'node.answerCutLength')}</span>
+        </div>
+      )}
+
       {/* Response action row — the actions that act on THIS answer live
           under it (LLM-chat convention); the sibling-branch variant is in
           the header's ⋯ menu */}
@@ -324,17 +333,26 @@ export default function ResponseSection({
         </div>
       )}
 
-      {/* Failed generation: retry in place */}
+      {/* Failed generation: retry in place, and say WHY. The toast is long gone
+          by the time anyone comes back to a half answer, so the reason is kept
+          with the version rather than only flashed once. */}
       {data.generationFailed && !data.isLoading && (
-        <div className="mt-2 flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-          <AlertTriangle size={14} strokeWidth={1.75} className="shrink-0" />
-          {t('common.generationFailed')}
-          {!isViewerMode && <button
-            onClick={() => editQuestion(nodeId, data.question)}
-            className="ml-auto bg-card border border-red-200 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
-          >
-            <RefreshCw size={12} strokeWidth={1.75} /> {t('common.retry')}
-          </button>}
+        <div className="mt-2">
+          <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+            <AlertTriangle size={14} strokeWidth={1.75} className="shrink-0" />
+            {t('common.generationFailed')}
+            {!isViewerMode && <button
+              onClick={() => editQuestion(nodeId, data.question)}
+              className="ml-auto bg-card border border-red-200 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+            >
+              <RefreshCw size={12} strokeWidth={1.75} /> {t('common.retry')}
+            </button>}
+          </div>
+          {data.failureReasons?.[data.responseIndex] && (
+            <div className="mt-1 px-3 text-2xs font-mono text-red-500/90 leading-relaxed break-words">
+              {fmt(t('node.failureReason'), { message: data.failureReasons[data.responseIndex]! })}
+            </div>
+          )}
         </div>
       )}
     </div>

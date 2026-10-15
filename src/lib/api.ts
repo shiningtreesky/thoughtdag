@@ -215,6 +215,9 @@ export interface StreamCallbacks {
   /** The vision stand-in failed; the original model answers from the
       images' companion text. */
   onImageFallback?: (model: string) => void;
+  /** The answer stopped before it was finished — the output ceiling was hit,
+      or the tool loop used up its step budget. Fires once, near the end. */
+  onTruncated?: (reason: import('../types').TruncationReason) => void;
 }
 
 export interface ToolPrefs {
@@ -394,6 +397,11 @@ export async function llmCallStream(
           if (parsed.imageFallback?.model) {
             toast('info', fmt(t('toast.imagesAsText'), { model: parsed.imageFallback.model }), 9000);
             cbs.onImageFallback?.(parsed.imageFallback.model);
+          }
+          // The proxy read the provider's own finish reason: the answer was cut
+          // short. Without this frame a truncated answer looks complete.
+          if (parsed.truncated === 'length' || parsed.truncated === 'steps') {
+            cbs.onTruncated?.(parsed.truncated);
           }
         } catch (e) {
           if (e instanceof Error && e.message !== data) throw e;

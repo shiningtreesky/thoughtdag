@@ -383,6 +383,19 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
   });
 }
 
+// One bad request must never take the proxy down with it. Node exits on an
+// unhandled rejection, so a single aborted stream was enough to kill the whole
+// process — every later request then failed with ERR_CONNECTION_REFUSED while
+// the canvas still looked alive, which reads to the person as "it suddenly
+// stopped working". Log it and stay up: the worst case should be one lost
+// answer, not a dead app.
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection (proxy stays up):', err instanceof Error ? (err.stack || err.message) : String(err));
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception (proxy stays up):', err instanceof Error ? (err.stack || err.message) : String(err));
+});
+
 // ─── Scholarly search (free open APIs, no keys) ─────────────────
 
 // arXiv Atom API — regex-parse the stable entry fields (no XML dep needed)
@@ -931,6 +944,54 @@ app.post('/api/runtime-key', async (req, res) => {
 // level, so they keep their defaults.
 const noThink = (base) => ({ ...(base ?? {}), openrouter: { ...(base?.openrouter ?? {}), reasoning: { enabled: false } } });
 
+// Models occasionally leak raw tool-call markup into the text stream (e.g.
+// when they want to search but tools are disabled). Two dialects observed:
+// GLM's "<tool_call>…</tool_call>" and Kimi's
+// "<|tool_calls_section_begin|>…<|tool_call_end|>" token family.
+// Closed blocks are scrubbed wherever they arrive; `dropUnclosed` is set only
+// once the stream is over, when an opener can no longer be completed and what
+// trails it is an aborted tool call rather than answer prose.
+const CLOSED_TOOL_MARKUP = [
+  [/<tool_call>[\s\S]*?<\/tool_call>\n?/g, ''],
+  // a section swallows the call blocks that have fully arrived
+  [/<\|tool_calls_section_begin\|>(?:[\s\S]*?<\|tool_call_end\|>)+(?:<\|tool_calls_section_end\|>)?\n?/g, ''],
+  // an orphan call block (its section was scrubbed in an earlier chunk)
+  [/<\|tool_call_begin\|>[\s\S]*?<\|tool_call_end\|>\n?/g, ''],
+  // stray single tokens — but never the two openers: unfinished
+  // blocks must stay intact in the holdback until their end arrives
+  [/<\|tool_call(?!s_section_begin|_begin)[a-z_]*\|>/g, ''],
+];
+// After CLOSED_TOOL_MARKUP has run, any opener left standing has no closing
+// tag anywhere after it: everything from it to the end of the string is markup.
+const UNCLOSED_TOOL_MARKUP = [
+  /<tool_call[\s\S]*$/,
+  /<\|tool_calls_section_begin\|>[\s\S]*$/,
+  /<\|tool_call_begin\|>[\s\S]*$/,
+];
+const scrubToolMarkup = (s, dropUnclosed) => {
+  let out = s;
+  for (const [re, rep] of CLOSED_TOOL_MARKUP) out = out.replace(re, rep);
+  if (dropUnclosed) for (const re of UNCLOSED_TOOL_MARKUP) out = out.replace(re, '');
+  return out;
+};
+
+// How many model steps one generation may take before it is forced to answer
+// (see stopWhen below). Shared with the truncation report so the two can never
+// drift apart and disagree about what "ran out of steps" means.
+const MAX_STEPS = 5;
+
+// A cut-off answer must not read as a finished one. 'length' is the provider's
+// output ceiling; a turn that ends on a tool call once the step budget is spent
+// never got to write its answer. Both are reported as observed, never inferred.
+// `maxSteps` is the budget that pass was given; a pass with no budget (and no
+// tools) can only ever be cut by 'length'.
+const truncationOf = async (r, maxSteps) => {
+  const finish = await r.finishReason.catch(() => 'unknown');
+  if (finish === 'length') return 'length';
+  if (maxSteps && finish === 'tool-calls' && (await r.steps.catch(() => [])).length >= maxSteps) return 'steps';
+  return null;
+};
+
 app.post('/api/claude', async (req, res) => {
   const { messages, model: modelId, images, providers, fast } = req.body;
   const resolved = resolveModel(modelId || DEFAULT_MODEL, images && images.length > 0, providers);
@@ -960,6 +1021,25 @@ app.post('/api/stream', async (req, res) => {
   const resolved = resolveModel(modelId || DEFAULT_MODEL, images && images.length > 0, providers);
   if (!resolved) { res.status(503).json({ error: 'No model configured. Add an API key first.' }); return; }
   const { entry, id: actualModelId, reroutedFrom } = resolved;
+
+  // The person can leave mid-generation — a reload, the Stop button, closing
+  // the tab. Every res.write() after that targets a closed response, and that
+  // surfaces as an async 'error' event: with no listener it is an uncaught
+  // exception, OUTSIDE this handler's try/catch, and it used to take the whole
+  // proxy down. Track the disconnect, swallow its errors, and stop paying the
+  // model for an answer nobody is reading any more.
+  const upstream = new AbortController();
+  let clientGone = false;
+  const markGone = () => {
+    if (clientGone) return;
+    clientGone = true;
+    upstream.abort();
+  };
+  res.on('close', markGone);
+  res.on('error', (err) => {
+    console.error('Stream response ended early:', err.message);
+    markGone();
+  });
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -1015,13 +1095,14 @@ app.post('/api/stream', async (req, res) => {
   try {
     const result = streamText({
       maxOutputTokens: MAX_OUTPUT_TOKENS,
+      abortSignal: upstream.signal,
       model: gatewayOnline ? entry.online() : entry.model(),
       system: prompt.system,
       messages: prompt.messages,
       providerOptions: entry.providerOptions,
       tools,
       experimental_transform: smoothStream({ chunking: /[\u3040-\u30ff\u4e00-\u9fff]|\S+\s+/ }),
-      stopWhen: stepCountIs(5),
+      stopWhen: stepCountIs(MAX_STEPS),
       // Force a synthesis step: from step 4 on, tools are disabled AND the
       // instructions switch to "write the final answer now" — GLM otherwise
       // keeps trying to search and leaks raw <tool_call> text into the answer.
@@ -1036,24 +1117,14 @@ app.post('/api/stream', async (req, res) => {
           : undefined,
     });
 
-    // Models occasionally leak raw tool-call markup into the text stream
-    // (e.g. when they want to search but tools are disabled). Two dialects
-    // observed: GLM's "<tool_call>...</tool_call>" and Kimi's
-    // "<|tool_calls_section_begin|>...<|tool_call_end|>" token family.
-    // Filter both, holding back a possible partial tag at the chunk tail.
+    // The filter above is applied per chunk, so a tag split across two chunks
+    // would slip through. Hold back a possible partial tag at the chunk tail.
     let holdback = '';
     const emitFiltered = (chunk) => {
+      if (clientGone) return;
       let buf = holdback + chunk;
       holdback = '';
-      buf = buf
-        .replace(/<tool_call>[\s\S]*?<\/tool_call>\n?/g, '')
-        // a section swallows the call blocks that have fully arrived
-        .replace(/<\|tool_calls_section_begin\|>(?:[\s\S]*?<\|tool_call_end\|>)+(?:<\|tool_calls_section_end\|>)?\n?/g, '')
-        // an orphan call block (its section was scrubbed in an earlier chunk)
-        .replace(/<\|tool_call_begin\|>[\s\S]*?<\|tool_call_end\|>\n?/g, '')
-        // stray single tokens — but never the two openers: unfinished
-        // blocks must stay intact in the holdback until their end arrives
-        .replace(/<\|tool_call(?!s_section_begin|_begin)[a-z_]*\|>/g, '');
+      buf = scrubToolMarkup(buf, false);
       const open = buf.search(/<tool_call|<\|tool_call/);
       if (open !== -1) {
         holdback = buf.slice(open);
@@ -1078,6 +1149,7 @@ app.post('/api/stream', async (req, res) => {
     // fullStream so reasoning models (DeepSeek, Claude thinking, GLM) get
     // their thinking forwarded on its own channel; text keeps the filter.
     for await (const part of result.fullStream) {
+      if (clientGone) break;
       if (part.type === 'text-delta') {
         emitFiltered(part.text);
       } else if (part.type === 'reasoning-delta' && part.text) {
@@ -1086,10 +1158,20 @@ app.post('/api/stream', async (req, res) => {
         throw part.error instanceof Error ? part.error : new Error(String(part.errorText ?? part.error));
       }
     }
-    if (holdback && !holdback.startsWith('<tool_call')) {
-      emittedChars += holdback.length;
-      res.write(`data: ${JSON.stringify({ text: holdback })}\n\n`);
+    // The stream is over: no later chunk can complete a held block, so an opener
+    // still standing is markup that will never close. Scrub what did close, drop
+    // the aborted call, and emit everything else — the tail of a real answer must
+    // never be swallowed by a leaked tag. (This used to discard the whole tail
+    // whenever it happened to begin with an opener.)
+    if (holdback) {
+      const tail = scrubToolMarkup(holdback, true);
+      if (tail) {
+        emittedChars += tail.length;
+        res.write(`data: ${JSON.stringify({ text: tail })}\n\n`);
+      }
     }
+
+    let truncatedReason = await truncationOf(result, MAX_STEPS);
 
     // :online closed with zero text (thinking models most of all): retry
     // once with the plain model so the user always gets an answer.
@@ -1099,9 +1181,11 @@ app.post('/api/stream', async (req, res) => {
         providerOptions: entry.providerOptions,
       });
       for await (const part of retry.fullStream) {
+        if (clientGone) break;
         if (part.type === 'text-delta') { emittedChars += part.text.length; res.write(`data: ${JSON.stringify({ text: part.text })}\n\n`); }
         else if (part.type === 'reasoning-delta' && part.text) res.write(`data: ${JSON.stringify({ reasoning: part.text })}\n\n`);
       }
+      truncatedReason = await truncationOf(retry);
     }
 
     // Deterministic synthesis fallback: if the model searched but wrote
@@ -1131,14 +1215,23 @@ app.post('/api/stream', async (req, res) => {
         providerOptions: entry.providerOptions,
       });
       for await (const part of synth.fullStream) {
-        if (part.type === 'text-delta') res.write(`data: ${JSON.stringify({ text: part.text })}\n\n`);
+        if (clientGone) break;
+        if (part.type === 'text-delta') { emittedChars += part.text.length; res.write(`data: ${JSON.stringify({ text: part.text })}\n\n`); }
         else if (part.type === 'reasoning-delta' && part.text) res.write(`data: ${JSON.stringify({ reasoning: part.text })}\n\n`);
       }
+      // The synthesis pass is the answer the person reads: if IT was cut, that
+      // is the truncation to report, whatever the searching pass did before it.
+      truncatedReason = await truncationOf(synth);
     }
 
     if (emittedChars === 0) {
       const fr = await result.finishReason.catch(() => 'unknown');
       res.write(`data: ${JSON.stringify({ error: `Model produced no text (finish: ${fr}, model: ${actualModelId}${gatewayOnline ? ' via :online' : ''})` })}\n\n`);
+    }
+    // Say it out loud: an answer that ran out of output tokens, or out of steps
+    // before it could write itself, otherwise reads exactly like a complete one.
+    if (truncatedReason && emittedChars > 0 && !clientGone) {
+      res.write(`data: ${JSON.stringify({ truncated: truncatedReason })}\n\n`);
     }
     if (sources.length > 0) {
       res.write(`data: ${JSON.stringify({ sources })}\n\n`);
@@ -1149,8 +1242,10 @@ app.post('/api/stream', async (req, res) => {
       res.write(`data: ${JSON.stringify({ usage })}\n\n`);
     }
 
-    res.write('data: [DONE]\n\n');
-    res.end();
+    if (!clientGone) {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
   } catch (err) {
     console.error('Stream error:', err);
     // The vision stand-in failed (its window is usually far smaller than
@@ -1170,12 +1265,15 @@ app.post('/api/stream', async (req, res) => {
             providerOptions: original.entry.providerOptions,
           });
           for await (const part of rescue.fullStream) {
+            if (clientGone) break;
             if (part.type === 'text-delta') res.write(`data: ${JSON.stringify({ text: part.text })}\n\n`);
             else if (part.type === 'reasoning-delta' && part.text) res.write(`data: ${JSON.stringify({ reasoning: part.text })}\n\n`);
             else if (part.type === 'error') throw part.error instanceof Error ? part.error : new Error(String(part.errorText ?? part.error));
           }
           const usage = await rescue.totalUsage.catch(() => null);
           if (usage) res.write(`data: ${JSON.stringify({ usage })}\n\n`);
+          const rescueCut = await truncationOf(rescue);
+          if (rescueCut && !clientGone) res.write(`data: ${JSON.stringify({ truncated: rescueCut })}\n\n`);
           res.write('data: [DONE]\n\n');
           res.end();
           return;

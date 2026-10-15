@@ -224,6 +224,10 @@ export async function directLlmStream(
     if (full.length === 0) {
       throw new Error(`Model produced no text (finish: ${pass.finishReason}, model: ${modelId}${useOnline ? ' via :online' : ''})`);
     }
+    // The gateway said the answer hit its output ceiling. This lane has no tool
+    // loop, so 'length' is the only way a turn gets cut — and it must be said
+    // out loud, or a half-written answer reads exactly like a finished one.
+    if (pass.finishReason === 'length') callbacks?.onTruncated?.('length');
     if (citations.size > 0) callbacks?.onSources?.([...citations.values()]);
     return full;
   } catch (err: unknown) {

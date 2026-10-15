@@ -19,7 +19,7 @@ import { ladderContextFor } from '../lib/ladder-context';
 import type { Ladder } from '../types';
 import { t, fmt } from '../i18n';
 import { isViewerMode } from '../lib/viewer';
-import type { Reference } from '../types';
+import type { Reference, TruncationReason } from '../types';
 import type { StoreState } from './types';
 
 // Background summary generation — fire and forget. Display channel ONLY:
@@ -175,6 +175,10 @@ export async function runNodeGeneration(
   }));
 
   let references: Reference[] | undefined;
+  // Set by whichever lane ran the turn, from the provider's own finish reason:
+  // the answer stopped early. A generation that finished on its own leaves it
+  // undefined, so a rerun clears the mark its predecessor carried.
+  let truncatedReason: TruncationReason | undefined;
 
   // Model provenance: pinned override, else the global pick, else the
   // server default. A pin that isn't reachable here (imported canvas,
@@ -211,7 +215,7 @@ export async function runNodeGeneration(
   // live sweep firing while the agent works does not append it a second time
   let harnessClaim: Promise<boolean> | null = null;
 
-  const writeFinal = (response: string, failed = false) => {
+  const writeFinal = (response: string, failed = false, reason?: string) => {
     if (!isCurrent()) return; // superseded: a newer generation owns this node
     const tokenCount = countTokens(question + response);
     const modelUsed = actualModel ?? requestedModel;
@@ -230,7 +234,7 @@ export async function runNodeGeneration(
         // so repeated retries don't stack failure entries.
         const failText = new Set([t('node.failedPlaceholder'), t('node.emptyResponse')]);
         const kept = versionMode === 'append' || failed
-          ? n.data.responses.map((r, i) => ({ r, q: n.data.questions?.[i], by: n.data.generatedBy?.[i], rs: n.data.reasonings?.[i], at: n.data.generatedAts?.[i], ed: n.data.editedAts?.[i], gw: n.data.gatewaySearches?.[i], ef: n.data.generatedEfforts?.[i] })).filter(({ r }) => r && !(failed && failText.has(r)))
+          ? n.data.responses.map((r, i) => ({ r, q: n.data.questions?.[i], by: n.data.generatedBy?.[i], rs: n.data.reasonings?.[i], at: n.data.generatedAts?.[i], ed: n.data.editedAts?.[i], gw: n.data.gatewaySearches?.[i], ef: n.data.generatedEfforts?.[i], tr: n.data.truncateds?.[i], fr: n.data.failureReasons?.[i] })).filter(({ r }) => r && !(failed && failText.has(r)))
           : [];
         const now = new Date().toISOString();
         const responses = [...kept.map(({ r }) => r), response];
@@ -239,12 +243,17 @@ export async function runNodeGeneration(
         const questions = [...kept.map(({ q }) => q ?? n.data.question), n.data.question];
         const generatedBy = [...kept.map(({ by }) => by), modelUsed];
         const gatewaySearches = [...kept.map(({ gw }) => gw), gatewaySearched || undefined];
+        // a failed version is not "cut short", it did not run to a finish at all
+        const truncateds = [...kept.map(({ tr }) => tr), failed ? undefined : truncatedReason];
+        // WHY it failed, kept with the version: a toast vanishes, and a node
+        // that only says "failed" leaves the person guessing at a half answer.
+        const failureReasons = [...kept.map(({ fr }) => fr), failed ? reason : undefined];
         // the effort this version ran at: only an agent turn has one, from the run's own record
         const generatedEfforts = [...kept.map(({ ef }) => ef), (isAgentModel(modelUsed) && n.data.agentSession?.effort) || undefined];
         const reasonings = [...kept.map(({ rs }) => rs), n.data.reasoning || undefined];
         const generatedAts = [...kept.map(({ at }) => at), now];
         const editedAts = [...kept.map(({ ed }) => ed), undefined];
-        return { ...n, data: { ...n.data, response, responses, questions, generatedBy, gatewaySearches, generatedEfforts, reasonings, generatedAts, editedAts, reasoning: undefined, restreaming: undefined, pendingApprovals: undefined, agentTrace: undefined, responseIndex: responses.length - 1, isLoading: false, tokenCount, generationFailed: failed || undefined, references, highlights: pruneHighlights(n.data.highlights, response), lastContextHash: contextHash, lastContextParts: contextParts, lastGeneratedAt: now } };
+        return { ...n, data: { ...n.data, response, responses, questions, generatedBy, gatewaySearches, truncateds, failureReasons, generatedEfforts, reasonings, generatedAts, editedAts, reasoning: undefined, restreaming: undefined, pendingApprovals: undefined, agentTrace: undefined, responseIndex: responses.length - 1, isLoading: false, tokenCount, generationFailed: failed || undefined, references, highlights: pruneHighlights(n.data.highlights, response), lastContextHash: contextHash, lastContextParts: contextParts, lastGeneratedAt: now } };
       }),
     }));
   };
@@ -292,6 +301,14 @@ export async function runNodeGeneration(
       messages = [...messages.slice(0, at), block, ...messages.slice(at)];
     }
   }
+
+  // No proactive timeout here, deliberately: a thinking model can be busy for
+  // minutes before it writes a single answer token, and a long answer can run
+  // for a long time, so a wall-clock limit would cut off exactly the
+  // generations worth keeping. A generation ends when the stream says so —
+  // [DONE], an upstream error, or the connection closing. The cost is that a
+  // half-open stream that never errors leaves the node loading until something
+  // else gives out; Stop remains the manual way out.
 
   try {
     // Context budget: browser-configured models carry their probed window.
@@ -476,6 +493,7 @@ export async function runNodeGeneration(
       },
       onRerouted: (_from, to) => { actualModel = to; },
       onImageFallback: (model) => { actualModel = model; },
+      onTruncated: (reason) => { truncatedReason = reason; },
       onReasoning: (_chunk, fullSoFar) => {
         pushStream({ reasoning: fullSoFar });
       },
@@ -555,7 +573,8 @@ export async function runNodeGeneration(
       } else {
         toast('error', fmt(t('toast.generationFailed'), { message }));
       }
-      writeFinal(partial || t('node.failedPlaceholder'), true);
+      // the reason rides with the version, not just with the toast
+      writeFinal(partial || t('node.failedPlaceholder'), true, message);
     }
     get().pushHistory();
   }

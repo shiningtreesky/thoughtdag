@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { ThoughtNode, ThoughtEdge } from '../../types';
-import { generateId } from '../../utils';
+import { generateId, countTokens } from '../../utils';
 import { autoLayout } from '../../lib/layout';
 import { getDescendantIds, selectionSinks, walkUpAncestors } from '../../lib/graph';
 import { COLORS } from '../../lib/constants';
@@ -698,6 +698,47 @@ ${intent.trim()}` : ''}` },
     if (controller) {
       controller.abort();
       activeAbortControllers.delete(nodeId);
+      return;
     }
+    // No controller, yet the card still says "generating": the stream that owned
+    // this node is gone and nothing will ever write its final state. Left alone,
+    // Stop is decorative, the node stays loading forever, and every surface gated
+    // on isLoading — this node's follow-up input and the reading view's among
+    // them — goes dead with no way out. Finalize what actually streamed.
+    const stuck = get().nodes.find((n) => n.id === nodeId);
+    if (!stuck?.data.isLoading) return;
+    const stopped = stuck.data.response.trim() ? stuck.data.response : t('node.stoppedPlaceholder');
+    const now = new Date().toISOString();
+    set((state) => ({
+      nodes: state.nodes.map((n) => {
+        if (n.id !== nodeId) return n;
+        const prev = n.data.responses ?? [];
+        const pad = <T,>(arr: T[] | undefined): T[] => arr ?? prev.map(() => undefined as unknown as T);
+        return { ...n, data: { ...n.data,
+          response: stopped,
+          // every per-version array grows by one, or the pair rail desyncs
+          responses: [...prev, stopped],
+          questions: [...pad(n.data.questions), n.data.question],
+          generatedBy: [...pad(n.data.generatedBy), undefined],
+          gatewaySearches: [...pad(n.data.gatewaySearches), undefined],
+          truncateds: [...pad(n.data.truncateds), undefined],
+          failureReasons: [...pad(n.data.failureReasons), undefined],
+          generatedEfforts: [...pad(n.data.generatedEfforts), undefined],
+          reasonings: [...pad(n.data.reasonings), n.data.reasoning || undefined],
+          generatedAts: [...pad(n.data.generatedAts), now],
+          editedAts: [...pad(n.data.editedAts), undefined],
+          responseIndex: prev.length,
+          isLoading: false,
+          restreaming: undefined,
+          reasoning: undefined,
+          pendingApprovals: undefined,
+          agentTrace: undefined,
+          tokenCount: countTokens(n.data.question + stopped),
+          lastGeneratedAt: now,
+        } };
+      }),
+    }));
+    get().logEvent('generate', nodeId, { chars: stopped.length });
+    get().pushHistory();
   },
 });

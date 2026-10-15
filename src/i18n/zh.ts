@@ -209,6 +209,9 @@ export const zh: Record<keyof typeof en, string> = {
   'node.stoppedPlaceholder': '（已停止生成）',
   'node.failedPlaceholder': '_生成失败。_',
   'node.emptyResponse': '模型没有返回内容。可能是上游瞬时故障——点重试再来一次。',
+  'node.answerCutLength': '这条回答在模型的输出上限处停下，内容不完整。可以重试一次，或把问题收窄让答案更短。',
+  'node.answerCutSteps': '这一轮在模型还在检索时就结束了，没有写出结论。可以关掉这个节点的检索，或重试一次。',
+  'node.failureReason': '停下的原因：{message}',
   'node.backToVersionTitle': '生成失败不覆盖历史：切回之前的版本',
 
   // Content palette + content nodes (canvas material)
