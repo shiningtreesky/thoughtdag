@@ -7,7 +7,7 @@ import { COLORS } from '../../lib/constants';
 import type { ContextMessage, ImageAttachment } from '../../lib/api';
 import { buildContext, resolveExplicitRole, applyRoleOverride, type MessageSource } from '../context-builder';
 import { activeAbortControllers, autoRunCounts, runNodeGeneration, triggerParadigmCascade } from '../streaming';
-import { useUiStore, toast, recallSnapshot } from '../../lib/ui-store';
+import { useUiStore, toast, recallSnapshot, openReaderForAnswer } from '../../lib/ui-store';
 // the stale set a request carries is the one the preview shows: the fingerprint's minus the judge's dismissals (#51)
 import { shownStaleIds } from '../../lib/stale-judge';
 import { t, fmt } from '../../i18n';
@@ -119,6 +119,8 @@ export const createLlmSlice: StateCreator<StoreState, [], [], LlmSlice> = (set, 
       : get().nodes;
     const newNodes = autoLayout([...updatedNodes, newNode], newEdges);
     set({ nodes: newNodes, edges: newEdges, selectedNodeId: id });
+    // the ask opened its own reading surface (the material reader's rail): leave it there
+    if (!opts.noReader) openReaderForAnswer(id);
 
     // Build full context from ancestors + explicit role for the new node
     const selfNode = get().nodes.find((n) => n.id === id);
@@ -323,6 +325,8 @@ export const createLlmSlice: StateCreator<StoreState, [], [], LlmSlice> = (set, 
     }));
     const allEdges = [...edges, ...newEdges];
     set({ nodes: autoLayout([...nodes, newNode], allEdges), edges: allEdges, selectedNodeId: id, selectedNodeIds: [] });
+    // multi-select explore is an ask too: read the answer where it streams
+    openReaderForAnswer(id);
 
     // Standard context walk through the fresh fan-in edges (self blanked)
     const ctx = buildContext(
@@ -452,6 +456,7 @@ export const createLlmSlice: StateCreator<StoreState, [], [], LlmSlice> = (set, 
 
     const newNodes = autoLayout([...get().nodes, newNode], newEdges);
     set({ nodes: newNodes, edges: newEdges, selectedNodeId: id });
+    openReaderForAnswer(id);
 
     const regenSelf = get().nodes.find((n) => n.id === id);
     const regenCtx = parentId

@@ -80,6 +80,9 @@ export interface AddQuestionOptions {
   /** @-mentioned node ids: any not already in the new node's context get a
       real dashed reference edge (the graph stays honest). */
   mentions?: string[];
+  /** The ask came from a surface that reads the answer itself (the material
+   *  reader's rail): don't open the reading view over it. */
+  noReader?: boolean;
 }
 
 export interface LlmSlice {

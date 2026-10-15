@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { Pin, X } from 'lucide-react';
 import { useStore } from '../../store';
 import { useUiStore } from '../../lib/ui-store';
 import { partitionContext } from '../../lib/graph';
@@ -40,6 +40,9 @@ export default function FocusPanel({ onFocusNode }: { onFocusNode?: (id: string)
   // The width lives in ui-store so the canvas toolbar can offset itself.
   const panelWidth = useUiStore((s) => s.panelWidth);
   const setPanelWidth = useUiStore((s) => s.setPanelWidth);
+  // pinned: a click on the empty canvas no longer closes this panel
+  const panelPinned = useUiStore((s) => s.panelPinned);
+  const setPanelPinned = useUiStore((s) => s.setPanelPinned);
   // the recall switch's current default, for a node asked before it existed
   const recallEnabled = useUiStore((s) => s.recallEnabled);
   const [resizing, setResizing] = useState(false);
@@ -125,9 +128,22 @@ export default function FocusPanel({ onFocusNode }: { onFocusNode?: (id: string)
         <RoleLine data={data} inheritedRole={inheritedRole} onEdit={(initial) => setRoleEdit(initial)} />
         <div className="flex items-center gap-1 shrink-0">
           {!isViewerMode && <HeaderActions nodeId={selectedNodeId!} isLoading={data.isLoading} />}
+          {!isViewerMode && (
+            <button
+              onClick={() => setPanelPinned(!panelPinned)}
+              title={t(panelPinned ? 'panel.unpin' : 'panel.pin')}
+              aria-pressed={panelPinned}
+              data-panel-pin={panelPinned ? 'on' : 'off'}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${panelPinned ? 'text-accent bg-accent/10' : 'text-ink-faint hover:text-ink hover:bg-line/50'}`}
+            >
+              <Pin size={16} strokeWidth={1.75} fill={panelPinned ? 'currentColor' : 'none'} />
+            </button>
+          )}
           <button
-            onClick={() => { useUiStore.getState().setPanelOpen(false); setSelectedNodeId(null); }}
+            // X is the explicit "I'm done with it": it closes AND drops the pin
+            onClick={() => { useUiStore.getState().setPanelOpen(false); useUiStore.getState().setPanelPinned(false); setSelectedNodeId(null); }}
             title={t('panel.close')}
+            data-panel-close
             className="text-ink-faint hover:text-ink transition-colors shrink-0 ml-1 h-8 flex items-center"
           >
             <X size={16} strokeWidth={1.75} />

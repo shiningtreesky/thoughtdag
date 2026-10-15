@@ -3,7 +3,7 @@ import { shownStaleIds } from '../../lib/stale-judge';
 import type { ThoughtData } from '../../types';
 import { buildContext } from '../context-builder';
 import { runNodeGeneration, autoRunCounts } from '../streaming';
-import { toast, updateToast, useUiStore } from '../../lib/ui-store';
+import { toast, updateToast, useUiStore, openReaderForAnswer } from '../../lib/ui-store';
 import { t, fmt } from '../../i18n';
 import type { StoreState, EvaluatorSlice } from '../types';
 import { condenseGuard } from '../../lib/condense-guard';
@@ -42,6 +42,8 @@ export const createEvaluatorSlice: StateCreator<StoreState, [], [], EvaluatorSli
     // (their context is just role + question). Material/frames never generate.
     if (!node.data.question) return;
     if (['note', 'file', 'link', 'frame'].includes(node.data.stepKind ?? '')) return;
+    // a manual re-run is a read request; the auto cascade and the watch edge are not
+    if (!opts?.auto) openReaderForAnswer(nodeId);
 
     // Digest nodes regenerate through the digest prompt against the source
     // attachment's full extracted text — not the context walk (the walk

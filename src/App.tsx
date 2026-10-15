@@ -16,7 +16,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import 'highlight.js/styles/github.css';
-import { ArrowRight, BookOpen, Bot, Brain, CircleHelp, Download, Drama, Eye, FileText, FolderSync, Frame, GitBranch, Hand, Highlighter, History as HistoryIcon, ImageDown, KeyRound, LayoutGrid, ListRestart, Loader2, MessageCircleQuestion, Minimize2, MoreHorizontal, Paperclip, Redo2, Rewind, Scissors, Search, Share2, SquareTerminal, Star, Stethoscope, StickyNote, Trash2, Undo2, Workflow, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Bot, Brain, CircleHelp, Download, Drama, Eye, FileText, FolderSync, Frame, GitBranch, Hand, Highlighter, History as HistoryIcon, ImageDown, KeyRound, LayoutGrid, ListRestart, Loader2, MessageCircleQuestion, Maximize2, Minimize2, MoreHorizontal, Paperclip, Redo2, Rewind, Scissors, Search, Share2, SquareTerminal, Star, Stethoscope, StickyNote, Trash2, Undo2, Workflow, X } from 'lucide-react';
 import './index.css';
 import ThoughtNode from './components/ThoughtNode';
 import ParadigmNode from './components/ParadigmNode';
@@ -43,6 +43,7 @@ import { useProjects, adoptImportedProject, markInstantiatedFrom } from './store
 import { projectStorageKey } from './store/projects';
 import { set as idbSet } from 'idb-keyval';
 import { instantiateParadigm } from './lib/paradigm';
+import { exportObsidianFolder, exportObsidianZip, obsidianFolderSupported } from './lib/obsidian-export';
 import { isContentKind, spawnContentNode, ingestFiles, fetchLinkIntoNode, clipboardTextToMarkdown } from './lib/content';
 import { generateId, isImeComposing } from './utils';
 import { recapToNote, recapCamera } from './lib/recap';
@@ -213,6 +214,8 @@ function Canvas() {
   const setAnnotationsHidden = useUiStore((s) => s.setAnnotationsHidden);
   const wheelPans = useUiStore((s) => s.wheelPans);
   const setWheelPans = useUiStore((s) => s.setWheelPans);
+  const autoReader = useUiStore((s) => s.autoReader);
+  const setAutoReader = useUiStore((s) => s.setAutoReader);
   const [inputValue, setInputValue] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -1178,7 +1181,16 @@ function Canvas() {
         zoomOnDoubleClick={false}
         connectionLineStyle={{ stroke: themePalette.accent, strokeDasharray: '8 4', strokeWidth: 2 }}
         onSelectionChange={onSelectionChange}
-        onPaneClick={() => { setSelectedNodeId(null); setSelectedNodeIds([]); setNodeMenu(null); }}
+        // A pinned panel survives the click. setSelectedNodeIds([]) alone would
+        // null the selection (see store/slices/nodes.ts), so when pinned we
+        // re-assert the single selection instead: it drops any multi-select and
+        // keeps the node the panel is showing. Unpinned, a pane click deselects.
+        onPaneClick={() => {
+          const st = useStore.getState();
+          if (useUiStore.getState().panelPinned && st.selectedNodeId) st.setSelectedNodeId(st.selectedNodeId);
+          else st.setSelectedNodeId(null);
+          setNodeMenu(null);
+        }}
       >
         {paperTexture === 'grid' ? (
           <>
@@ -1777,6 +1789,47 @@ function Canvas() {
               >
                 <Hand size={14} strokeWidth={1.75} className={`shrink-0 ${wheelPans ? 'text-accent' : 'text-ink-faint'}`} /> <span className="flex-1">{t('toolbar.menuWheelPans')}</span>{wheelPans && <span className="text-accent">✓</span>}
               </button>
+              <button
+                onClick={() => { setMoreOpen(false); setAutoReader(!autoReader); }}
+                className="w-full text-left px-3 py-2 text-xs text-ink hover:bg-wash transition-colors flex items-center gap-2.5"
+                title={t('toolbar.autoReaderTitle')}
+                aria-pressed={autoReader}
+                data-auto-reader
+              >
+                <Maximize2 size={14} strokeWidth={1.75} className={`shrink-0 ${autoReader ? 'text-accent' : 'text-ink-faint'}`} /> <span className="flex-1">{t('toolbar.menuAutoReader')}</span>{autoReader && <span className="text-accent">✓</span>}
+              </button>
+              {hasNodes && (
+                <button
+                  onClick={() => {
+                    setMoreOpen(false);
+                    if (!obsidianFolderSupported()) { toast('info', ti('toast.obsidianUnsupported')); return; }
+                    void exportObsidianFolder()
+                      .then((n) => toast('success', fmt(ti('toast.obsidianDone'), { n })))
+                      // picking a folder is a user cancel, not a failure
+                      .catch((e) => { if (e instanceof Error && e.name === 'AbortError') return; toast('error', fmt(ti('toast.obsidianFailed'), { e: String((e as Error)?.message ?? e) })); });
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-ink hover:bg-wash transition-colors flex items-center gap-2.5"
+                  title={t('toolbar.obsidianFolderTitle')}
+                  data-obsidian-folder
+                >
+                  <FolderSync size={14} strokeWidth={1.75} className="shrink-0" /> <span className="flex-1">{t('toolbar.menuObsidianFolder')}</span>
+                </button>
+              )}
+              {hasNodes && (
+                <button
+                  onClick={() => {
+                    setMoreOpen(false);
+                    void exportObsidianZip()
+                      .then((n) => toast('success', fmt(ti('toast.obsidianDone'), { n })))
+                      .catch((e) => toast('error', fmt(ti('toast.obsidianFailed'), { e: String((e as Error)?.message ?? e) })));
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-ink hover:bg-wash transition-colors flex items-center gap-2.5"
+                  title={t('toolbar.obsidianZipTitle')}
+                  data-obsidian-zip
+                >
+                  <Download size={14} strokeWidth={1.75} className="shrink-0" /> <span className="flex-1">{t('toolbar.menuObsidianZip')}</span>
+                </button>
+              )}
               {hasNodes && (
                 <button
                   onClick={() => {

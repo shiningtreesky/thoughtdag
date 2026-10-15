@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-10-08T05:57:00Z",
-  "updated_at": "2026-10-15T12:36:00Z",
+  "updated_at": "2026-10-15T13:44:29Z",
   "files": {
     ".claude/commands/thoughtdag.md": {
       "role": "index",
@@ -107,9 +107,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "0b4815ace99a2c815375fa1728c70e8c2b8b80ad5837953fe8058e9b154291a1",
-      "size": 69863,
-      "normalized_sha256": "0b4815ace99a2c815375fa1728c70e8c2b8b80ad5837953fe8058e9b154291a1"
+      "sha256": "8f1fde2d50560d846ade8b1a3e63b63d65101ecb903142e4db8a3c068dd2ec16",
+      "size": 96192,
+      "normalized_sha256": "8f1fde2d50560d846ade8b1a3e63b63d65101ecb903142e4db8a3c068dd2ec16"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -1577,9 +1577,9 @@
     },
     "src/components/ThoughtNode.tsx": {
       "role": "index",
-      "sha256": "3b933bff8ec719b56fd5ad3f41cb03ab48c995ab6d77617d4594afbeb24165b2",
-      "size": 68346,
-      "normalized_sha256": "e77c53549ea760b86b09bb784ab5b85c7b3e3e557bac276b5ee29458c40a3b5a"
+      "sha256": "098c92013760fe1e0501b150fed5c64409be781b4d16d3f9d2ee35e95bc65691",
+      "size": 69112,
+      "normalized_sha256": "ab063aae44902ac20495b47b337709b00e4cd407e58228eab1b3b038cff6204b"
     },
     "src/components/Tutorial.tsx": {
       "role": "index",

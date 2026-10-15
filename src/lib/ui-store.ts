@@ -33,6 +33,10 @@ const AUTO_PAUSE_KEY = 'thoughtdag.autoRefreshPaused';
 const HIDE_ANNOTATIONS_KEY = 'thoughtdag.hideAnnotations';
 /** 'on' = the wheel (and a trackpad's two-finger scroll) pans the canvas; off, the default, it zooms as it did through 0.5.2 */
 const WHEEL_PANS_KEY = 'thoughtdag.wheelPans';
+/** 'yes' = the focus panel survives a click on the empty canvas (pinned) */
+const PANEL_PIN_KEY = 'thoughtdag.panelPinned';
+/** 'off' = asking a question no longer opens the reading view on the answer */
+const AUTO_READER_KEY = 'thoughtdag.autoReader';
 
 export interface LadderJob { total: number; done: number; failed: number; skipped: number; model: string; running: boolean; cancelled: boolean; finishedAt?: number; /** the last transport error, shown when something did not succeed */ lastError?: string }
 
@@ -72,6 +76,9 @@ interface UiState {
   /** Panel mode: opened by double-clicking a node, closed via its X. While
    *  on, the panel follows the selection; single clicks only select. */
   panelOpen: boolean;
+  /** Pinned: a click on the empty canvas no longer drops the selection, so
+   *  the panel stays open. Esc and the panel's X still close it. */
+  panelPinned: boolean;
   /** Half-typed inputs keyed by surface (e.g. follow:<nodeId>) — survive
       node/panel switches within the session, cleared on submit. */
   drafts: Record<string, string>;
@@ -157,6 +164,10 @@ interface UiState {
   /** Node whose answer is open in the large reading overlay. */
   responseViewerNodeId: string | null;
   setResponseViewerNodeId: (id: string | null) => void;
+  /** You asked it, you want to read it: an ask opens the reading view on the
+   *  node that will answer, so the stream is visible from the first token. */
+  autoReader: boolean;
+  setAutoReader: (on: boolean) => void;
   /** Auto-backup folder name (null = off) — display only, handle lives in idb. */
   autoBackupDir: string | null;
   setAutoBackupDir: (name: string | null) => void;
@@ -207,6 +218,7 @@ interface UiState {
   setViewerLoadError: (v: boolean) => void;
   setReaderNodeId: (id: string | null, jump?: { page?: number; threadId?: string }) => void;
   setPanelOpen: (open: boolean) => void;
+  setPanelPinned: (pinned: boolean) => void;
   setSelectedModel: (model: string | null) => void;
   setAgentEffort: (level: AgentEffort) => void;
 }
@@ -244,6 +256,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   annotationsHidden: localStorage.getItem(HIDE_ANNOTATIONS_KEY) === 'yes',
   wheelPans: localStorage.getItem(WHEEL_PANS_KEY) === 'on',
   panelOpen: false,
+  panelPinned: localStorage.getItem(PANEL_PIN_KEY) === 'yes',
   panelWidth: (() => { const raw = localStorage.getItem('thoughtdag.panelWidth'); const n = raw ? parseInt(raw, 10) : NaN; return Number.isFinite(n) ? n : 520; })(),
   selectedModel: localStorage.getItem(MODEL_KEY) || null,
   agentEffort: localStorage.getItem(EFFORT_KEY) || '',
@@ -274,6 +287,10 @@ export const useUiStore = create<UiState>((set, get) => ({
     set({ mcpEnabled: enabled });
   },
   setPanelOpen: (open) => set({ panelOpen: open }),
+  setPanelPinned: (pinned) => {
+    localStorage.setItem(PANEL_PIN_KEY, pinned ? 'yes' : 'no');
+    set({ panelPinned: pinned });
+  },
   setPanelWidth: (w) => set({ panelWidth: w }),
   roleLib: (() => {
     try {
@@ -352,6 +369,11 @@ export const useUiStore = create<UiState>((set, get) => ({
   pingModelPicker: () => set((s) => ({ modelPickerPing: s.modelPickerPing + 1 })),
   responseViewerNodeId: null,
   setResponseViewerNodeId: (id) => set({ responseViewerNodeId: id }),
+  autoReader: localStorage.getItem(AUTO_READER_KEY) !== 'off',
+  setAutoReader: (on) => {
+    localStorage.setItem(AUTO_READER_KEY, on ? 'on' : 'off');
+    set({ autoReader: on });
+  },
   autoBackupDir: null,
   setAutoBackupDir: (name) => set({ autoBackupDir: name }),
   lastAutoBackupAt: null,
@@ -423,6 +445,17 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 }
 
 let toastCounter = 0;
+
+/** Open the reading view on the node about to answer. Only for asks the user
+ *  made; automatic re-runs (the cascade, the watch edge) pass auto and never
+ *  open it, and the material reader opts out because it reads in its own rail.
+ *  The ⋯ menu switch turns this off for good. */
+export function openReaderForAnswer(nodeId: string | null | undefined) {
+  if (!nodeId) return;
+  const ui = useUiStore.getState();
+  if (!ui.autoReader || ui.responseViewerNodeId === nodeId) return;
+  ui.setResponseViewerNodeId(nodeId);
+}
 
 /** Show a toast (bottom-right). duration 0 = sticky until dismissed.
     Returns the toast id (dismissToast / updateToast to manage sticky ones). */

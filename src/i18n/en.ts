@@ -444,6 +444,21 @@ export const en = {
   'toolbar.menuShare': 'Share read-only link',
   'toolbar.menuWheelPans': 'Wheel pans the canvas',
   'toolbar.wheelPansTitle': 'On: the wheel and a two-finger scroll pan the canvas; pinch or hold ⌘/Ctrl while scrolling to zoom. Suits a trackpad. Off: the wheel zooms.',
+  'toolbar.menuAutoReader': 'Open the reading view when I ask',
+  'toolbar.autoReaderTitle': 'On: the answer opens in the reading view the moment you ask, so you watch it stream. Off: it stays on the canvas and you open it yourself.',
+  'toolbar.menuObsidianFolder': 'Export notes to an Obsidian folder',
+  'toolbar.obsidianFolderTitle': 'One Markdown note per question and note node, wired with [[links]], written into a folder named after this canvas.',
+  'toolbar.menuObsidianZip': 'Export notes as a ZIP',
+  'toolbar.obsidianZipTitle': 'The same notes as a ZIP archive, so you can unpack it wherever you work.',
+  'obsidian.upstream': 'Upstream',
+  'obsidian.references': 'References',
+  'obsidian.downstream': 'Downstream',
+  'obsidian.ungrouped': 'Ungrouped',
+  'obsidian.unnamedFrame': 'Untitled section',
+  'obsidian.generating': 'still generating when exported',
+  'toast.obsidianDone': '{n} notes exported',
+  'toast.obsidianUnsupported': 'This browser cannot write a folder. Use the ZIP export, or the desktop app.',
+  'toast.obsidianFailed': 'Export failed: {e}',
   'toolbar.menuAnnotationsHide': 'Hide annotations',
   'toolbar.menuAnnotationsShow': 'Show annotations',
   'toolbar.hideAnnotations': 'Hide annotations (frames & unlinked material)',
@@ -552,6 +567,8 @@ export const en = {
   'content.pdfPagePrompt': 'Transcribe this PDF page into clean Markdown. Rules:\n- Write formulas as $...$ inline or $$...$$ on their own line\n- Keep heading levels, lists and tables\n- Replace figures with a one-line italic description (e.g. *Figure 2: ...*)\n- Drop headers, footers and page numbers\nOutput the content only, no preamble.',
 
   'panel.close': 'Close panel',
+  'panel.pin': 'Pin — clicking the canvas keeps this panel open',
+  'panel.unpin': 'Pinned — click to let a canvas click close it',
 
   // Role line — ONE semantic: a role set on a node is the system prompt for
   // it and everything downstream (nearest ancestor wins)

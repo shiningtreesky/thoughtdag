@@ -268,7 +268,8 @@ function ReaderOverlay({ node, onLocate }: { node: ThoughtNode; onLocate: (id: s
     if (!q || !ask) return;
     // p.N provenance rides inside the quoted passage (document selections only)
     const passage = ask.targetNodeId ? ask.text : (ask.page != null ? `(p.${ask.page}) ${ask.text}` : ask.text);
-    useStore.getState().addQuestion(q, { parentId: ask.targetNodeId ?? node.id, branchContext: passage });
+    // this ask reads in the reader's own rail: no full-screen view over the document
+    useStore.getState().addQuestion(q, { parentId: ask.targetNodeId ?? node.id, branchContext: passage, noReader: true });
     const freshId = useStore.getState().selectedNodeId;
     // document selections remember the page they came from (both views);
     // original-view ones additionally leave a mark on that page
@@ -469,7 +470,7 @@ function ReaderOverlay({ node, onLocate }: { node: ThoughtNode; onLocate: (id: s
   const submitWhole = () => {
     const q = wholeDraft.trim();
     if (!q) return;
-    useStore.getState().addQuestion(q, { parentId: node.id });
+    useStore.getState().addQuestion(q, { parentId: node.id, noReader: true });
     setThreadId(useStore.getState().selectedNodeId);
     setWholeDraft('');
   };
@@ -570,7 +571,7 @@ function ReaderOverlay({ node, onLocate }: { node: ThoughtNode; onLocate: (id: s
     const q = followDraft.trim();
     const last = thread[thread.length - 1];
     if (!q || !last) return;
-    useStore.getState().addQuestion(q, { parentId: last.id });
+    useStore.getState().addQuestion(q, { parentId: last.id, noReader: true });
     setFollowDraft('');
   };
 

@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { describeModel } from '../lib/use-models';
 import { toolFingerprint, turnComposition, footprint, conclusionOf } from '../lib/turn-insight';
 import { Handle, Position, useReactFlow, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
-import { AlertTriangle, Archive, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, GitBranch, Globe, Hourglass, Minimize2, Paperclip, RefreshCw, Send, Split, Square, Star, Trash2, UserRound, X, Pencil } from 'lucide-react';
+import { AlertTriangle, Archive, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, GitBranch, Globe, Hourglass, Maximize2, Minimize2, Paperclip, RefreshCw, Send, Split, Square, Star, Trash2, UserRound, X, Pencil } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 
 /** A tool's status line standing in for the answer while it runs (see
@@ -642,6 +642,18 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
               <Square size={10} strokeWidth={1.75} fill="currentColor" />
             </button>
           )}
+          {(data.response || data.isLoading) && !isViewerMode && (
+            // the reading view, one click from the card; spaced off the delete
+            // button because that one removes the node and its whole downstream
+            <button
+              onClick={(e) => { e.stopPropagation(); useUiStore.getState().setResponseViewerNodeId(id); }}
+              title={t('panel.expandResponse')}
+              data-node-reading-view
+              className="mr-1.5 text-ink-faint hover:text-accent hover:bg-wash rounded-full w-7 h-7 flex items-center justify-center transition-colors"
+            >
+              <Maximize2 size={15} strokeWidth={1.75} />
+            </button>
+          )}
           {!(isParadigmNode && runLocked) && !isViewerMode && (
             <button onClick={() => deleteNode(id)} className="text-ink-faint hover:text-red-500 hover:bg-red-50 rounded-full w-7 h-7 flex items-center justify-center transition-colors" title={t('common.delete')}>
               <X size={16} strokeWidth={1.75} />
@@ -1032,7 +1044,19 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
           {/* Inline continue input — hidden while a paradigm run is in
               progress (the structure IS the paradigm); returns on unlock */}
           {!data.isLoading && !data.isEditingResponse && !isAwaitingAsk && !(isParadigmNode && runLocked) && !isViewerMode && selectedNodeId !== id && (
-            <div className="mt-3 pt-3 border-t border-line relative">
+            <div
+              className="mt-3 pt-3 border-t border-line relative"
+              // Clicking into the continue box must not select the node. React Flow
+              // selects on pointerdown, App's onSelectionChange then sets
+              // selectedNodeId WITHOUT opening the panel, and this very box is
+              // gated on `selectedNodeId !== id` — so the click unmounted the box
+              // you had just focused, focus fell to <body>, and with the panel
+              // closed there was no input left anywhere: the follow-up was
+              // unreachable. Blocking the pointer here keeps the node unselected.
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
               <MentionSurface m={mention} text={inputValue} setText={setInputValue} />
               <div className="flex items-end gap-2 bg-wash rounded-xl px-4 py-2.5 transition-shadow focus-within:ring-1 focus-within:ring-accent/40">
                 <textarea
