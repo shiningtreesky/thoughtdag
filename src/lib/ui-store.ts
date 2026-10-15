@@ -69,6 +69,13 @@ interface UiState {
   scholarSearchEnabled: boolean;
   mcpEnabled: boolean;
   autoRefreshPaused: boolean;
+  /** Map-plaque summaries (the TAG | topic | takeaway line + ladder) off. */
+  summaryEnabled: boolean;
+  /** Minimal mode: one switch that quiets every background lane at runtime
+      (summary, memory, recall, search tools, auto-rerun) without touching
+      the individual switches — turn it off and each lane's own setting
+      applies again. */
+  simpleMode: boolean;
   /** View mode: hide frames + unlinked content nodes (annotation layer off). */
   annotationsHidden: boolean;
   /** Canvas wheel: false (default) zooms, true pans (trackpad style; zoom by pinch or ⌘/Ctrl + wheel). */
@@ -124,6 +131,8 @@ interface UiState {
   /** Ambient long-term memory: ON by default, one switch, visible writes. */
   memoryEnabled: boolean;
   setMemoryEnabled: (on: boolean) => void;
+  setSummaryEnabled: (on: boolean) => void;
+  setSimpleMode: (on: boolean) => void;
   memories: import('./memory').MemoryEntry[];
   setMemories: (entries: import('./memory').MemoryEntry[]) => void;
   /** the person's memory as two documents (preferences, identity); the fragment list above only survives until it is folded in */
@@ -323,9 +332,19 @@ export const useUiStore = create<UiState>((set, get) => ({
     set({ anysearchKey: key });
   },
   memoryEnabled: localStorage.getItem('thoughtdag.memoryEnabled') !== 'off',
+  summaryEnabled: localStorage.getItem('thoughtdag.summaryEnabled') !== 'off',
+  simpleMode: localStorage.getItem('thoughtdag.simpleMode') === 'on',
   setMemoryEnabled: (on) => {
     localStorage.setItem('thoughtdag.memoryEnabled', on ? 'on' : 'off');
     set({ memoryEnabled: on });
+  },
+  setSummaryEnabled: (on) => {
+    localStorage.setItem('thoughtdag.summaryEnabled', on ? 'on' : 'off');
+    set({ summaryEnabled: on });
+  },
+  setSimpleMode: (on) => {
+    localStorage.setItem('thoughtdag.simpleMode', on ? 'on' : 'off');
+    set({ simpleMode: on });
   },
   memories: (() => {
     try {

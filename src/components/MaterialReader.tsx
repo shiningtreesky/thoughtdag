@@ -585,7 +585,7 @@ function ReaderOverlay({ node, onLocate }: { node: ThoughtNode; onLocate: (id: s
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
       el.scrollTop = el.scrollHeight;
     }
-  }, [lastTurn?.data.response, lastTurn?.data.isLoading]);
+  }, [lastTurn?.data.response, lastTurn?.data.reasoning, lastTurn?.data.isLoading]);
 
   // per-material scroll memory (session): reopening finds your place.
   // Recorded live on scroll (at unmount the DOM is already detached and
@@ -926,7 +926,17 @@ function ReaderOverlay({ node, onLocate }: { node: ThoughtNode; onLocate: (id: s
               {thread.map((turn) => (
                 <div key={turn.id}>
                   <div className="text-sm font-semibold text-ink leading-snug mb-1.5">{turn.data.question}</div>
-                  {turn.data.isLoading && !turn.data.response ? (
+                  {turn.data.isLoading && !turn.data.response && turn.data.reasoning ? (
+                    // the thinking stream, same treatment as the canvas node:
+                    // a quiet live tail so the silent first stretch of a
+                    // generation is no longer a bare "thinking" spinner
+                    <div className="px-3 py-2 bg-wash/70 rounded-xl max-h-[140px] overflow-hidden flex flex-col justify-end" data-node-reasoning-live>
+                      <div className="text-2xs text-ink-faint mb-1">💭 {t('node.reasoningLive')}</div>
+                      <div className="text-xs text-ink-faint italic leading-relaxed whitespace-pre-wrap break-words">
+                        {turn.data.reasoning.length > 300 ? '…' + turn.data.reasoning.slice(-300) : turn.data.reasoning}
+                      </div>
+                    </div>
+                  ) : turn.data.isLoading && !turn.data.response ? (
                     <div className="flex items-center gap-2 text-xs text-ink-muted py-1">
                       <Loader2 size={13} strokeWidth={1.75} className="animate-spin text-accent" /> {t('common.thinking')}
                     </div>

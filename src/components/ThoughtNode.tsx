@@ -878,7 +878,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
             ) : (
             <>
             {versionReasoning && (
-              <ReasoningDisclosure text={versionReasoning} />
+              <ReasoningDisclosure text={versionReasoning} maxHeightClass="max-h-[240px]" />
             )}
             <div
               ref={responseRef}

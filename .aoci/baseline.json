@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-10-08T05:57:00Z",
-  "updated_at": "2026-10-15T16:49:30Z",
+  "updated_at": "2026-10-15T17:32:04Z",
   "files": {
     ".claude/commands/thoughtdag.md": {
       "role": "index",
@@ -107,9 +107,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "086d86bb8e3a2775b89c5c3b1057158bdae7910b4c6ca3a629a276240681a11d",
-      "size": 99535,
-      "normalized_sha256": "086d86bb8e3a2775b89c5c3b1057158bdae7910b4c6ca3a629a276240681a11d"
+      "sha256": "be308b8becdb10da0868cf9a5fa5d9b9f027455010d6bdc80da39dc06213005b",
+      "size": 99917,
+      "normalized_sha256": "be308b8becdb10da0868cf9a5fa5d9b9f027455010d6bdc80da39dc06213005b"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -1577,9 +1577,9 @@
     },
     "src/components/ThoughtNode.tsx": {
       "role": "index",
-      "sha256": "c02a785cb9bf661694a634a343ea787c51b0e84e1ea28cf3d6a18d3460af7d30",
-      "size": 69631,
-      "normalized_sha256": "1aba08648746269140fedae98a8eac008c1f62c03da4e656d8ad5917aa943b79"
+      "sha256": "a27581845cf8ba585db952e44e84dc648aad89db89dc46146d2ccabcfd7b84cc",
+      "size": 69662,
+      "normalized_sha256": "568ef27b42431b24e692e6f5e6d493f7fc9c8208a54b594818bb2eeae913efce"
     },
     "src/components/Tutorial.tsx": {
       "role": "index",
@@ -1793,9 +1793,9 @@
     },
     "src/components/ui/ReasoningDisclosure.tsx": {
       "role": "index",
-      "sha256": "7d6b20c35d6b677c21747c08d129765bfebe94635e0ba810c9725a0014d46ca0",
-      "size": 1338,
-      "normalized_sha256": "53c7b90e55b2f883e2a2d3d910149f6bbf9bff49db178557309bb48afb9a3107"
+      "sha256": "316d27f7b7ba767257b356ff6ffd2f37523ad007e391807914168b9f2771db78",
+      "size": 1811,
+      "normalized_sha256": "316d27f7b7ba767257b356ff6ffd2f37523ad007e391807914168b9f2771db78"
     },
     "src/components/ui/RecallChip.tsx": {
       "role": "index",

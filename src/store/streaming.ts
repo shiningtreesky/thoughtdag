@@ -31,6 +31,9 @@ import type { StoreState } from './types';
 // ruled out or decided — the lines read as one progression, not islands.
 export const SUMMARY_MIN_CHARS = 400;
 export function generateSummary(nodeId: string, question: string, response: string, setSummary: (id: string, summary: string, forResponse: string, type?: string, topic?: string, confidence?: number, conclusive?: number) => void, mapLines?: string[], ladder?: { model?: string; set: (id: string, forResponse: string, ladder: Ladder | null) => void } & LadderOptions) {
+  // the one background lane with its own switch: minimal mode quiets it too
+  const ui = useUiStore.getState();
+  if (!ui.summaryEnabled || ui.simpleMode) return;
   if (response.length < SUMMARY_MIN_CHARS) return;
   // One rule for who summarises: the model that answered when it is an API model,
   // the default background model for agent answers (an agent id would otherwise
@@ -282,7 +285,7 @@ export async function runNodeGeneration(
   // injection. Items already on the node (a rerun, or some pruned by the
   // person) are used as they stand; a fresh ask searches. Same seat as the
   // memory block: after the last answer, before the question.
-  const recallOn = !selfData?.stepKind && !selfData?.digestOf && (selfData?.recall ?? useUiStore.getState().recallEnabled);
+  const recallOn = !selfData?.stepKind && !selfData?.digestOf && !useUiStore.getState().simpleMode && (selfData?.recall ?? useUiStore.getState().recallEnabled);
   if (recallOn && isCurrent()) {
     let items = selfData?.recallItems;
     if (!items) {
@@ -501,10 +504,11 @@ export async function runNodeGeneration(
       // Search permissions live on the node (snapshotted at ask time);
       // legacy nodes without flags follow the current shared defaults
       const selfData = get().nodes.find((n) => n.id === nodeId)?.data;
+      const quiet = useUiStore.getState().simpleMode; // minimal mode: no tools, just the answer
       return {
-        web: selfData?.webSearch ?? useUiStore.getState().webSearchEnabled,
-        scholar: selfData?.scholarSearch ?? useUiStore.getState().scholarSearchEnabled,
-        mcp: useUiStore.getState().mcpEnabled,
+        web: !quiet && (selfData?.webSearch ?? useUiStore.getState().webSearchEnabled),
+        scholar: !quiet && (selfData?.scholarSearch ?? useUiStore.getState().scholarSearchEnabled),
+        mcp: !quiet && useUiStore.getState().mcpEnabled,
       };
     })(), pinnedModel, harnessRoute ?? (agentRoute ? { ...agentRoute, nodeId } : undefined));
     flushStream();
@@ -602,7 +606,7 @@ export async function runNodeGeneration(
  * Ordinary canvases are untouched: nothing there carries stepKind 'prompt'.
  */
 export function triggerParadigmCascade(get: Get, completedNodeId: string): void {
-  if (useUiStore.getState().autoRefreshPaused) return; // same global brake
+  if (useUiStore.getState().autoRefreshPaused || useUiStore.getState().simpleMode) return; // same global brake
   const { nodes, edges } = get();
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const isComplete = (id: string): boolean => {
@@ -630,7 +634,7 @@ export function triggerParadigmCascade(get: Get, completedNodeId: string): void 
 }
 
 function triggerAutoReruns(set: Set, get: Get, completedNodeId: string): void {
-  if (useUiStore.getState().autoRefreshPaused) return; // global kill switch
+  if (useUiStore.getState().autoRefreshPaused || useUiStore.getState().simpleMode) return; // global kill switch
   // 1) slide followsTip edges whose source thread just grew: the completed
   //    node's STRUCTURAL ancestor chain reaching an edge's source means
   //    that edge's thread extended past its current anchor.

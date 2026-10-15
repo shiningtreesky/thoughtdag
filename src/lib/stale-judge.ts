@@ -7,6 +7,7 @@
 // the stale mark stays out of the context. Without a judge, or when the
 // node predates the record, the fingerprint's verdict stands.
 import { useStore } from '../store';
+import { useUiStore } from './ui-store';
 import { upstreamParts } from '../store/context-builder';
 import { judgeAvailable, decideStaleness, STALE_BAR, type StaleCase } from './judge';
 import type { StaleVerdict } from '../store/types';
@@ -34,7 +35,7 @@ const tried = new Set<string>();
 
 /** Judge every stale node that has no verdict for its current staleness. Runs in the background; safe to call often. */
 export async function judgeStaleness(): Promise<void> {
-  if (running || !judgeAvailable()) return;
+  if (running || useUiStore.getState().simpleMode || !judgeAvailable()) return;
   const st = useStore.getState();
   const pending = st.staleIds.filter((id) => st.staleVerdicts[id]?.fp !== st.staleFps[id] && !tried.has(`${id}:${st.staleFps[id]}`));
   if (!pending.length) return;

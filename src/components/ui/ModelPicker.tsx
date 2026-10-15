@@ -356,6 +356,10 @@ function GlobalCapabilities() {
   };
   const memoryEnabled = useUiStore((s) => s.memoryEnabled);
   const setMemoryEnabled = useUiStore((s) => s.setMemoryEnabled);
+  const summaryEnabled = useUiStore((s) => s.summaryEnabled);
+  const setSummaryEnabled = useUiStore((s) => s.setSummaryEnabled);
+  const simpleMode = useUiStore((s) => s.simpleMode);
+  const setSimpleMode = useUiStore((s) => s.setSimpleMode);
   const memoryCount = useUiStore((s) => profileLines(s.profile).length);
   const setMemoryManagerOpen = useUiStore((s) => s.setMemoryManagerOpen);
   const caps = data?.capabilities;
@@ -393,6 +397,33 @@ function GlobalCapabilities() {
         {!capsOpen && <span className="ml-auto flex items-center gap-1.5">{dot(!!caps?.webSearch)}<span className="text-2xs text-ink-faint">{t('caps.webSearch')}</span>{dot(memoryEnabled)}<span className="text-2xs text-ink-faint">{t('caps.memory')}</span></span>}
       </button>
       {capsOpen && <>
+      <div className="px-3 py-1 flex items-start gap-2">
+        {dot(simpleMode)}
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <p className="text-2xs text-ink-muted font-medium flex-1">{t('caps.simple')}</p>
+          <button
+            onClick={(e) => { e.stopPropagation(); setSimpleMode(!simpleMode); }}
+            title={t('caps.simpleTitle')}
+            className={`text-2xs px-2 py-0.5 rounded-full transition-colors shrink-0 ${simpleMode ? 'bg-accent/10 text-accent' : 'bg-wash text-ink-faint'}`}
+          >
+            {simpleMode ? t('caps.on') : t('caps.off')}
+          </button>
+        </div>
+      </div>
+      {simpleMode && <p className="px-3 pb-1 -mt-0.5 text-2xs text-ink-faint leading-relaxed">{t('caps.simpleDesc')}</p>}
+      <div className="px-3 py-1 flex items-start gap-2">
+        {dot(summaryEnabled && !simpleMode)}
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <p className="text-2xs text-ink-muted font-medium flex-1">{t('caps.summary')}</p>
+          <button
+            onClick={(e) => { e.stopPropagation(); setSummaryEnabled(!summaryEnabled); }}
+            title={t('caps.summaryTitle')}
+            className={`text-2xs px-2 py-0.5 rounded-full transition-colors shrink-0 ${summaryEnabled ? 'bg-accent/10 text-accent' : 'bg-wash text-ink-faint'}`}
+          >
+            {summaryEnabled ? t('caps.on') : t('caps.off')}
+          </button>
+        </div>
+      </div>
       <div className="px-3 py-1 flex items-start gap-2">
         {dot(!!caps?.webSearch)}
         <div className="flex-1 min-w-0">

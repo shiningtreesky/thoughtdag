@@ -6,7 +6,13 @@ import { useT } from '../../i18n';
 // answer, reasoning is backstage. Rendered only when the model emitted it
 // (data-driven adaptation, no capability registry) and NEVER sent anywhere:
 // not into context, fingerprints, summaries or exports beyond raw JSON.
-export default function ReasoningDisclosure({ text }: { text: string }) {
+//
+// `maxHeightClass` is the surface's own limit. Left out, an opened disclosure
+// renders as continuous text and the surrounding scroll container handles it -
+// the panel and the reading view do that, so a long chain of thought reads top
+// to bottom and any stretch of it can be selected and asked about. The card
+// keeps a cap: it is a plaque, and one long thought would blow it up.
+export default function ReasoningDisclosure({ text, maxHeightClass }: { text: string; maxHeightClass?: string }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   return (
@@ -17,10 +23,13 @@ export default function ReasoningDisclosure({ text }: { text: string }) {
         data-reasoning-toggle
       >
         {open ? <ChevronDown size={12} strokeWidth={1.75} /> : <ChevronRight size={12} strokeWidth={1.75} />}
-        <span>💭 {t('node.reasoning')}</span>
+        <span>{'\u{1F4AD}'} {t('node.reasoning')}</span>
       </button>
       {open && (
-        <div className="mt-1.5 px-3 py-2 bg-wash/70 rounded-xl text-xs text-ink-faint italic leading-relaxed whitespace-pre-wrap break-words max-h-[240px] overflow-y-auto nowheel nodrag cursor-text" data-reasoning-body>
+        <div
+          className={`mt-1.5 px-3 py-2 bg-wash/70 rounded-xl text-xs text-ink-faint italic leading-relaxed whitespace-pre-wrap break-words nowheel nodrag cursor-text${maxHeightClass ? ` ${maxHeightClass} overflow-y-auto` : ''}`}
+          data-reasoning-body
+        >
           {text}
         </div>
       )}

@@ -180,7 +180,7 @@ async function mergeProfileFact(kind: ProfileKind, text: string, origin: FactOri
 export function judgeMemory(question: string, response: string, canvas?: MemoryCanvas): void {
   migrateLegacyMemories();
   const { memoryEnabled } = useUiStore.getState();
-  if (!memoryEnabled || question.trim().length < 8) return;
+  if (!memoryEnabled || useUiStore.getState().simpleMode || question.trim().length < 8) return;
   void (async () => {
     try {
       const bg = (await getModelsOnce())?.default ?? undefined;

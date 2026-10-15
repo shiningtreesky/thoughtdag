@@ -255,7 +255,7 @@ SearchBar.tsx[AU5S]: F:画布内搜索：跨节点/回答/frame/链接/便签定
 SelectionToolbar.tsx[AU6M]: F:多选工具栏：对齐、合并摘要/织入高光、摘要更新、Markdown导出、分支、删除 | R:code:src/lib/ladder-reselect.ts,code:src/lib/export.ts | A:对齐前有确认提示（用户明确要求的行为） | S:-
 SessionAtlas.tsx[AU7L]: F:Session Atlas界面：本地会话扇描分组、镜像打开、why搜索与记忆页、终端打开与导入 | R:code:src/lib/atlas/discover.ts,code:src/lib/why-bridge.ts,code:src/components/ui/RecallResults.tsx,code:src/lib/atlas/watermark.ts,code:src/store/projects.ts | A:只读镜像不改源会话；可禁用来源根；左侧项目文件夹是跨所有runner存储按cwd分组的，一个文件夹可以装不同CLI的会话 | S:桌面专属面：浏览器构建里没有它，它只在有围栏式fs桥处存在；自定义目录只能经原生选择器进入（壳侧白名单）；解析器未就绪的以诚实占位列出，不默默缺席
 ThoughtEdgeView.tsx[AU6S]: F:连线渲染：实线承载完整上游路径，紫色虚线摘要引用只带引用节点问答与上游问题链；随深度着色 | R:code:src/lib/edge-path.ts,code:src/store/context-builder.ts | A:- | S:-
-ThoughtNode.tsx[AU8L]: F:对话节点本体：铭牌语义缩放、工具状态行、handles上下文接线、回答版本、分支与重生成与归档与星标与工具足迹 | R:code:src/lib/turn-insight.ts,code:src/store/index.ts,code:src/components/focus-panel/index.tsx,code:src/lib/ui-store.ts | A:跑动中用工具状态行代答；答案区随缩放层级变化；卡片右上角有阅读视图按钮，等价于右键菜单的阅读视图；卡片双击同时打开焦点面板与阅读视图，阅读视图只在有答案或生成中时开；单击只选中节点 | S:右上角叉叉是deleteNode，连带删整条下游不弹确认；新操作按钮要与它留间距且只在有答案或生成中时出现；卡片onClick选中节点，而卡内追问输入区以未选中为渲染条件，必须拦click冒泡否则点进就卸载自己；阅读视图是z-75全屏遮罩且Esc用capture并stopPropagation，压在焦点面板z-20之上，第一下Esc只关它
+ThoughtNode.tsx[AU8L]: F:对话节点本体：铭牌语义缩放、工具状态行、handles上下文接线、回答版本、分支与重生成与归档与星标与工具足迹 | R:code:src/lib/turn-insight.ts,code:src/store/index.ts,code:src/components/focus-panel/index.tsx,code:src/lib/ui-store.ts | A:跑动中用工具状态行代答；答案区随缩放层级变化；卡片右上角有阅读视图按钮，等价于右键菜单的阅读视图；卡片双击同时打开焦点面板与阅读视图，阅读视图只在有答案或生成中时开；单击只选中节点；铭牌内的思考过程传max-h-[240px]封顶 | S:右上角叉叉是deleteNode，连带删整条下游不弹确认；新操作按钮要与它留间距且只在有答案或生成中时出现；卡片onClick选中节点，而卡内追问输入区以未选中为渲染条件，必须拦click冒泡否则点进就卸载自己；阅读视图是z-75全屏遮罩且Esc用capture并stopPropagation，压在焦点面板z-20之上，第一下Esc只关它
 Tutorial.tsx[AU5M]: F:入门教程对话框：分页图文步骤 | R:- | A:GIF按UI语言从/tutorial/懒加载 | S:-
 ZoomText.tsx[CU5S]: F:铭牌文字阶梯渲染：按屏幕像素取ladder最深可读层级，层级切换平滑过渡 | R:code:src/lib/ladder.ts | A:- | S:-
 
@@ -295,7 +295,7 @@ MemoryManagerModal.tsx[AU4T]: F:⋯菜单记忆入口：在Atlas上打开记忆�
 MemoryPage.tsx[AU6M]: F:记忆页：每主题dossier与画像文档的阅读/刷新/生成与主题标签 | R:code:src/lib/dossier.ts,code:src/lib/memory.ts | A:- | S:-
 ModelPicker.tsx[AU8L]: F:工具栏模型选择器：默认模型、目录刷新、决策模型、能力可用性（搜索/学术/记忆/视觉） | R:code:src/lib/use-models.ts,code:src/lib/agents/agent-runtime.ts,code:src/lib/runtime-providers.ts,code:src/lib/judge.ts,code:src/lib/ui-store.ts,code:src/lib/profile.ts | A:工具栏与节点侧栏共用的选择器：无props时编辑全局选择，带value/onChange时编辑节点覆盖并给出inherit；agent模型按runtime分组折叠，选中带efforts的agent模型时菜单不关而在其下展开effort步骤 | S:runtime目录表在picker首次打开时才请求而非启动时（CLI启动要几秒）；但一个模型都没有时必须在bare分支也问一次，否则装了Pi的新profile只会看到连接模型；节点模式少于2个模型直接return null，全局picker的空态是唯一连接入口
 NodeMention.tsx[AU4T]: F:@提及节点chip：提问框内引用具名节点 | R:- | A:- | S:-
-ReasoningDisclosure.tsx[AU3T]: F:思考过程折叠展示 | R:- | A:- | S:-
+ReasoningDisclosure.tsx[AU3T]: F:思考过程折叠展示，展开后的高度由所在面决定 | R:code:src/components/ThoughtNode.tsx,code:src/components/focus-panel/ResponseSection.tsx,code:src/components/ui/ResponseViewer.tsx | A:maxHeightClass缺省时连续渲染全部文本、滚动交给外层容器；铭牌卡片传max-h-[240px] | S:思考文本只供展示，绝不进上下文、指纹或导出
 RecallChip.tsx[AU5S]: F:召回开关chip：发送钮旁的时钟图标，单次提问关召回可确认 | R:- | A:- | S:-
 RecallResults.tsx[AU5S]: F:why/召回结果列表UI：引用卡片与外链（Atlas与面板共用） | R:code:src/lib/why-bridge.ts | A:- | S:-
 ReleaseNotesDialog.tsx[AU4T]: F:更新说明对话框：读src/whats-new.ts渲染媒体 | R:code:src/whats-new.ts | A:- | S:-
