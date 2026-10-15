@@ -18,7 +18,7 @@ package-lock.json[FC3L]: F:根项目npm依赖锁定文件 | R:code:package.json 
 package.json[FC8S]: F:根项目清单：全部npm脚本（dev与server与build与lint与smoke与docs与website与desktop与cli:build与dsh:build）与依赖 | R:code:server.mjs,code:desktop/package.json,code:cli/package.json | A:build=tsc -b && vite build；cli:build与desktop:why用esbuild打包；smoke跑scripts/smoke.mjs | S:Markdown.tsx直接import未声明的unified与hast-util-sanitize，pnpm严格布局需hoisted，npm无需处理；npm与pnpm两套锁定并存，npm install只动package-lock，pnpm-lock需另行同步
 pnpm-lock.yaml[FC3L]: F:pnpm依赖锁定（本地环境用，与npm lock并存） | R:- | A:- | S:-
 pnpm-workspace.yaml[FC3T]: F:pnpm工作区设置：nodeLinker=hoisted、shamefullyHoist、仅esbuild允许构建脚本 | R:- | A:- | S:-
-server.mjs[EN9L]: F:唯一后端：Express LLM代理——模型注册表按.env key自动注册、/api/stream SSE生成、web/学术搜索工具、MCP客户端、pdf-extract、fetch-url、judge与浏览器侧provider路由 | R:code:src/lib/api.ts,code:runtime/agents/http.cjs,code:runtime/sessions-fs.cjs,code:mcp.config.example.json | A:SERVE_DIST时托管dist；PORT默认3001；OpenRouter OAuth登录流程内置；poppler缺失时PDF仅文本回退 | S:zhipu vision必须走openai-compatible通道（zhipu provider丢图）；glm-4.5-flash已退役用glm-5.3-flash；fetch-url经isDisallowedHost防SSRF
+server.mjs[EN9L]: F:唯一后端：Express LLM代理——模型注册表按.env key自动注册、/api/stream SSE生成、web与学术搜索工具、MCP客户端、pdf-extract、fetch-url、judge与浏览器侧provider路由 | R:code:src/lib/api.ts,code:runtime/agents/http.cjs,code:runtime/sessions-fs.cjs,code:mcp.config.example.json,code:functions/api/[[path]].js | A:SERVE_DIST时托管dist；PORT默认3001；OpenRouter OAuth登录流程内置；poppler缺失时PDF仅文本回退；MAX_STEPS与truncationOf把length与步数耗尽作为truncated帧发出 | S:zhipu vision必须走openai-compatible通道（丢图）；glm-4.5-flash已退役用glm-5.3-flash；fetch-url经isDisallowedHost防SSRF；/api/stream必须带res的close与error守卫：客户端断开后写已关闭响应是异步error，无监听器即uncaughtException会带走整个代理（前端看着还活着，之后请求全ERR_CONNECTION_REFUSED）；进程级兼底不能代替它；MAX_OUTPUT_TOKENS不设即不发上限，截断由供应商默认值决定；holdback收尾只丢未闭合的工具调用标记本身，其之前的正文必须发出；stopWhen与截断判定共用MAX_STEPS
 tsconfig.app.json[FC5T]: F:应用TS配置：ES2022+DOM、bundler解析、strict全开 | R:- | A:- | S:-
 tsconfig.json[FC5T]: F:TS解决方案根：引用app与node两个子配置 | R:code:tsconfig.app.json,code:tsconfig.node.json | A:- | S:-
 tsconfig.node.json[FC5T]: F:构建侧TS配置（vite.config等）：ES2023+node类型、strict | R:- | A:- | S:-
@@ -181,7 +181,7 @@ build.mjs[FV6S]: F:构建插件内嵌SPA：以base /thoughtdag/打进dist-app，
 verify-write-bridge.mjs[XV4S]: F:写桥实况验证脚本：对运行中的dsh web做fork/inject/followup全链路 | R:code:dsh/lib/index.js | A:会花一次真实模型请求；默认用内置Hey会话可传session id | S:-
 
 ===X:/00-github/thoughtdag/functions/api/===
-[[path]].js[IN5L]: F:Cloudflare Pages演示部署代理函数：models/tools只读与stream/claude/probe-models/runtime-providers/runtime-key/fetch-url/judge路由 | R:code:server.mjs | A:演示部署不提供PDF抽取（501）；密钥经请求体传入不落盘 | S:-
+[[path]].js[IN5L]: F:Cloudflare Pages演示部署代理函数：models/tools只读与stream/claude/probe-models/runtime-providers/runtime-key/fetch-url/judge路由 | R:code:server.mjs,code:worker.js,code:src/lib/api.ts | A:演示部署不提供PDF抽取（501）；密钥经请求体传入不落盘；MAX_STEPS与truncationOf把length与步数耗尽作为truncated帧发出 | S:与server.mjs共用同一套流式线上格式，前端只按一种协议解析两条路，改这里的帧名或形状必须同步server.mjs与src/lib/api.ts
 
 ===X:/00-github/thoughtdag/protocol/adapters/claude-code/===
 thoughtdag.md[SU5T]: F:Claude Code命令适配：why/find/recall/status原样转CLI并逐字贴输出；否则打开当前会话画布 | R:code:cli/src/main.ts | A:@文件引用剥掉@只传名不读正文；Δ≈⤴标记与thoughtdag://深链原样呈现 | S:-
@@ -234,7 +234,7 @@ desktop-bridge.d.ts[CU6T]: F:桌面壳preload桥的类型声明：window.desktop
 index.css[CU6L]: F:全局样式与设计token（tailwind入口+自定义属性） | R:- | A:- | S:-
 main.tsx[EE7T]: F:React根：启动编排——主题、项目水合、viewer分流、桥安装与更新提醒 | R:code:src/App.tsx,code:src/store/projects.ts,code:src/lib/viewer.ts,code:src/lib/agents/http-bridge.ts,code:src/lib/atlas/dsh-bridge.ts | A:启动顺序是有意的：initAppearance在首绘前把主题属性放上html以免错主题闪一下；bootProjects在React挂载前后解析活动画布并水合，App的水合门在它完成时打开；#view=链接以只读方式启动 | S:粘进已打开标签的#view=链接只改hash，浏览器不重载，只读判定不会重跑，两个方向都要显式reload；长命标签跑的是它加载时的bundle，新部署要靠update-check推
 turndown-plugin-gfm.d.ts[CL2T]: F:无类型的GFM turndown插件补声明 | R:- | A:- | S:-
-types.ts[CD8L]: F:全域数据形状的单一来源：ThoughtData/ThoughtEdge/Attachment/Ladder/RecallItem/ApprovalRequest等，以及画布事件日志的语义操作表 | R:code:src/store/index.ts,code:src/store/types.ts,code:src/lib/graph.ts,code:src/components/ThoughtNode.tsx,code:src/lib/layout.ts,code:src/lib/events/types.ts,code:src/store/slices/nodes.ts | A:per-version数组（responses/questions/generatedBy/gatewaySearches/generatedEfforts/reasonings/generatedAts/editedAts）必须按同一索引对齐；questions缺失即所有版本共用当前question；focusRole只由渲染管线设置且永不持久化；CanvasEvent只记发生了什么、绝不存内容文本 | S:thinking-timeline字段（createdAt/askedAt/generatedAts/editedAts）只写不读：它们事后无法重建，必须从第一天就记；summaries/summaryTypes/summaryTopics/reasonings只供展示，绝不进上下文或指纹；archived节点被排除在每一次上下文遍历之外；大附件载荷存vault、只在导出时inline回来
+types.ts[CD8L]: F:全域数据形状的单一来源：ThoughtData/ThoughtEdge/Attachment/Ladder/RecallItem/ApprovalRequest等，TruncationReason与画布事件日志的语义操作表 | R:code:src/store/index.ts,code:src/store/types.ts,code:src/lib/graph.ts,code:src/components/ThoughtNode.tsx,code:src/lib/layout.ts,code:src/lib/events/types.ts,code:src/store/slices/nodes.ts,code:src/lib/api.ts | A:per-version数组（responses/questions/generatedBy/gatewaySearches/truncateds/failureReasons/generatedEfforts/reasonings/generatedAts/editedAts）必须按同一索引对齐；questions缺失即所有版本共用当前question；focusRole只由渲染管线设置且永不持久化；CanvasEvent只记发生了什么、绝不存内容文本 | S:thinking-timeline字段（createdAt/askedAt/generatedAts/editedAts）只写不读：它们事后无法重建，必须从第一天就记；summaries/summaryTypes/summaryTopics/reasonings绝不进上下文或指纹；archived节点退出每一次上下文遍历；大附件载荷存vault，导出时inline回来；truncateds与failureReasons只由跑这轮的那条路写，绝不从答案文本或失败布尔推断
 utils.ts[CC6M]: F:通用工具：CJK感知token估算、IME组词判定、id生成 | R:- | A:countTokens对CJK按1字1token计（旧length/4低估中文4倍） | S:IME组词中的Enter绝不提交（keyCode 229）
 whats-new.ts[SU7L]: F:更新说明的内容源：每版本一条中英双语条目，含lead、items与可随包打包的媒体 | R:code:src/components/ui/WhatsNewDialog.tsx,code:src/components/ui/ReleaseNotesDialog.tsx,code:src/lib/plugin-update.ts,code:src/lib/update-check.ts | A:多数版本静默通过，仅重大新门才弹；条目按新到旧排列；link经壳的window-open处理器在系统浏览器打开 | S:每个版本都必须有条目否则历史不完整；announce只决定更新后首次启动是否弹窗，不是是否有条目；媒体走public/whats-new/本地打包以便离线可读，绝不走网络调用
 
@@ -255,7 +255,7 @@ SearchBar.tsx[AU5S]: F:画布内搜索：跨节点/回答/frame/链接/便签定
 SelectionToolbar.tsx[AU6M]: F:多选工具栏：对齐、合并摘要/织入高光、摘要更新、Markdown导出、分支、删除 | R:code:src/lib/ladder-reselect.ts,code:src/lib/export.ts | A:对齐前有确认提示（用户明确要求的行为） | S:-
 SessionAtlas.tsx[AU7L]: F:Session Atlas界面：本地会话扇描分组、镜像打开、why搜索与记忆页、终端打开与导入 | R:code:src/lib/atlas/discover.ts,code:src/lib/why-bridge.ts,code:src/components/ui/RecallResults.tsx,code:src/lib/atlas/watermark.ts,code:src/store/projects.ts | A:只读镜像不改源会话；可禁用来源根；左侧项目文件夹是跨所有runner存储按cwd分组的，一个文件夹可以装不同CLI的会话 | S:桌面专属面：浏览器构建里没有它，它只在有围栏式fs桥处存在；自定义目录只能经原生选择器进入（壳侧白名单）；解析器未就绪的以诚实占位列出，不默默缺席
 ThoughtEdgeView.tsx[AU6S]: F:连线渲染：实线承载完整上游路径，紫色虚线摘要引用只带引用节点问答与上游问题链；随深度着色 | R:code:src/lib/edge-path.ts,code:src/store/context-builder.ts | A:- | S:-
-ThoughtNode.tsx[AU8L]: F:对话节点本体：铭牌语义缩放、工具状态行、handles上下文接线、回答版本、分支与重生成与归档与星标与工具足迹 | R:code:src/lib/turn-insight.ts,code:src/store/index.ts,code:src/components/focus-panel/index.tsx,code:src/lib/ui-store.ts | A:跑动中用工具状态行代答；答案区随缩放层级变化；卡片右上角有阅读视图按钮，等价于右键菜单的阅读视图 | S:卡片右上角的叉叉是deleteNode，连带删整条下游且不弹确认；新增的操作按钮必须与它留间距，且只在有答案或生成中时出现；卡片自身带onClick把节点设为选中，而卡内的追问输入区以未选中为渲染条件，所以它必须拦住click冒泡——否则点进输入框会把它自己卸载，而这条选中路径不开面板，画布上就再没有输入框
+ThoughtNode.tsx[AU8L]: F:对话节点本体：铭牌语义缩放、工具状态行、handles上下文接线、回答版本、分支与重生成与归档与星标与工具足迹 | R:code:src/lib/turn-insight.ts,code:src/store/index.ts,code:src/components/focus-panel/index.tsx,code:src/lib/ui-store.ts | A:跑动中用工具状态行代答；答案区随缩放层级变化；卡片右上角有阅读视图按钮，等价于右键菜单的阅读视图；卡片双击同时打开焦点面板与阅读视图，阅读视图只在有答案或生成中时开；单击只选中节点 | S:右上角叉叉是deleteNode，连带删整条下游不弹确认；新操作按钮要与它留间距且只在有答案或生成中时出现；卡片onClick选中节点，而卡内追问输入区以未选中为渲染条件，必须拦click冒泡否则点进就卸载自己；阅读视图是z-75全屏遮罩且Esc用capture并stopPropagation，压在焦点面板z-20之上，第一下Esc只关它
 Tutorial.tsx[AU5M]: F:入门教程对话框：分页图文步骤 | R:- | A:GIF按UI语言从/tutorial/懒加载 | S:-
 ZoomText.tsx[CU5S]: F:铭牌文字阶梯渲染：按屏幕像素取ladder最深可读层级，层级切换平滑过渡 | R:code:src/lib/ladder.ts | A:- | S:-
 
@@ -270,7 +270,7 @@ HighlightsSection.tsx[AU5S]: F:高光区：标注管理、织入成段、分支�
 QuestionSection.tsx[AU5S]: F:问题区：问题展示与就地编辑 | R:- | A:- | S:-
 RecallSection.tsx[AU6S]: F:召回区：提问时自动带入的相关记忆与回合，带judge标签与撤销 | R:code:src/lib/recall.ts,code:src/lib/judge.ts | A:- | S:-
 RelatedSection.tsx[AU5S]: F:相关区：why桥与主题词相关内容发现 | R:code:src/lib/why-bridge.ts,code:src/lib/topics.ts | A:- | S:-
-ResponseSection.tsx[AU6M]: F:回答区：多版本切换、重生成、星标、编辑与复制 | R:code:src/lib/use-models.ts | A:- | S:-
+ResponseSection.tsx[AU6M]: F:回答区：多版本切换、重生成、星标、编辑与复制，并在答案末尾标出截断或失败的原因 | R:code:src/lib/use-models.ts,code:src/components/Markdown.tsx,code:src/types.ts | A:版本导航走store的responseIndex，截断与失败原因按同一索引取truncateds/failureReasons；失败横幅下另起一行给出原因原文 | S:生成失败与截断互斥：失败版本没跑到结束、不是被截断，两条提示同时出现会让人以为半截文本还能救回
 RoleEditor.tsx[AU4T]: F:角色编辑条：全宽角色提示编辑 | R:code:src/lib/role-templates.ts | A:- | S:-
 RoleLine.tsx[AU4T]: F:面板摘要行：角色·token·材料一行；rolePrompt是节点及下游的系统提示（最近祖先获胜） | R:- | A:- | S:-
 index.tsx[AU7M]: F:聚焦面板壳：分区组装（问题/回答/上下文链/附件/召回/相关）、可调宽度与钉住开关 | R:code:src/store/context-builder.ts,code:src/lib/graph.ts,code:src/lib/constants.ts,code:src/lib/ui-store.ts | A:宽度与钉住状态读写ui-store；宽度拖完写localStorage(thoughtdag.panelWidth)，双击左边缘把手回默认520 | S:关闭按钮同时取消钉住；钉住只挡住画布空白点击，Esc与关闭按钮仍收起
@@ -299,7 +299,7 @@ ReasoningDisclosure.tsx[AU3T]: F:思考过程折叠展示 | R:- | A:- | S:-
 RecallChip.tsx[AU5S]: F:召回开关chip：发送钮旁的时钟图标，单次提问关召回可确认 | R:- | A:- | S:-
 RecallResults.tsx[AU5S]: F:why/召回结果列表UI：引用卡片与外链（Atlas与面板共用） | R:code:src/lib/why-bridge.ts | A:- | S:-
 ReleaseNotesDialog.tsx[AU4T]: F:更新说明对话框：读src/whats-new.ts渲染媒体 | R:code:src/whats-new.ts | A:- | S:-
-ResponseViewer.tsx[AU5S]: F:回答全屏查看器：版本导航、分支、追问、星标 | R:- | A:- | S:-
+ResponseViewer.tsx[AU5M]: F:回答全屏查看器：版本导航、分支、追问、星标，正文末尾标出截断原因，生成中提供停止 | R:code:src/components/Markdown.tsx,code:src/components/ui/ReasoningDisclosure.tsx,code:src/store/slices/llm.ts | A:追问框在正文下方且IME组词中的Enter不提交；截断提示按data.truncateds[responseIndex]取；isLoading时头部出现停止钮 | S:卡片上的停止钮被这层全屏壳压在后面，所以阅读视图必须自带停止：节点算作生成中时下方追问框与回车都是死的
 RoleManagerModal.tsx[AU5S]: F:角色模板管理：新增/删除 | R:code:src/lib/role-templates.ts | A:- | S:-
 RoleTemplateChips.tsx[AU4T]: F:有效角色chips展示 | R:code:src/lib/role-templates.ts | A:- | S:-
 SearchToggles.tsx[AU4S]: F:搜索开关：web与学术搜索可用性（含why在位检测） | R:code:src/lib/why-bridge.ts | A:- | S:-
@@ -312,9 +312,9 @@ TopicsPanel.tsx[AU6S]: F:主题面板：命名主题、judge标注、按主题�
 WhatsNewDialog.tsx[AU6S]: F:更新说明对话框：按版本渲染whats-new条目与媒体 | R:code:src/whats-new.ts | A:- | S:-
 
 ===X:/00-github/thoughtdag/src/i18n/===
-en.ts[CL6L]: F:英文文案字典：全部消息key的源头真相（area.name命名） | R:code:src/i18n/zh.ts | A:zh.ts以Record<keyof typeof en,string>约束，en新增key必须同步zh否则tsc -b失败 | S:-
+en.ts[CL6L]: F:英文文案字典：全部消息key的源头真相（area.name命名） | R:code:src/i18n/zh.ts | A:zh.ts以Record<keyof typeof en,string>约束，en新增key必须同步zh否则tsc -b失败；截断提示是node.answerCutLength与node.answerCutSteps，失败原因行是node.failureReason | S:-
 index.ts[CL6T]: F:i18n入口：en/zh两份扁平字典，zustand lang store持久化 | R:code:src/i18n/en.ts,code:src/i18n/zh.ts | A:- | S:-
-zh.ts[CL6L]: F:中文文案字典（类型对齐en） | R:code:src/i18n/en.ts | A:缺任一en key即编译失败；UI文案不得出现第三方品牌名（功能性标识除外） | S:-
+zh.ts[CL6L]: F:中文文案字典（类型对齐en） | R:code:src/i18n/en.ts | A:缺任一en key即编译失败；UI文案不得出现第三方品牌名（功能性标识除外）；node.answerCutLength与node.answerCutSteps给出截断提示，node.failureReason给出失败原因 | S:-
 
 ===X:/00-github/thoughtdag/src/lib/adapters/===
 claude-code-session.ts[ID8M]: F:Claude Code会话导入器（连续层的读方向）：~/.claude/projects下的JSONL投影为图、边与足迹，供导入与atlas镜像 | R:code:src/lib/adapters/shared.ts,code:src/lib/import-chat.ts,code:src/lib/layout.ts,code:src/lib/adapters/thoughtdag-canvas.ts,code:src/lib/events/project.ts,code:src/lib/atlas/subagents.ts | A:一个回合等于一条用户文本消息加到下一条用户文本消息之前assistant所做的一切；tool_use与tool_result按id配成回合节点上的原子文本附件；ClaudeSessionCollector供流式路径；会话可达数千回合，只导入最近的MAX_TURNS并用一个便签明说 | S:thinking块一律丢弃：它在源runner里也从不重新进入下一回合的上下文，本适配器投影的是上下文而不是模型的私有推理；主会话文件跳过sidechain行，子代理自己的文件整份都是sidechain且必须用它自己的agentId作身份（取sessionId会让父画布收养子代理的回合）；任务通知折进进行中的回合，不自成一个问题
@@ -332,7 +332,7 @@ agent-runtime.ts[DB8L]: F:把agent runtime当作画布可选的模型：编译wi
 http-bridge.ts[II5S]: F:desktopAgents的HTTP桥：宿主/agents端点+SSE事件流，宿主应答才安装 | R:code:src/lib/agents/agent-runtime.ts | A:- | S:-
 
 ===X:/00-github/thoughtdag/src/lib/===
-api.ts[IN9L]: F:前端到server.mjs的调用层：stream/claude/judge/pdf-extract/fetch-url/approvals的请求封装与按模型选择的分流 | R:code:server.mjs,code:src/lib/constants.ts,code:src/lib/agents/agent-runtime.ts,code:src/lib/direct-llm.ts,code:src/lib/runtime-providers.ts,code:src/lib/use-models.ts,code:src/lib/error-text.ts | A:llmCall与llmCallStream按模型分流：直连provider走directLlm*并绕过proxy的视觉改道，agent型模型走agentCallStream，否则POST到proxy；answerApproval对桌面runtime经壳的run通道回答、对harness桥只接受yes/no；providers只在已配置时才随请求携带，未配置时与纯.env设置字节一致 | S:直连时文本模型带图必须在发出之前就用用户语言拒绝（proxy路径才保留改道加补救）；vision状态为unknown时保留像素，让第一次真实请求充当能力探针；非JSON的404是Express在说路由不存在，即proxy早于该端点启动，提示重启而不是照抄错误文本；所有传输错误一律throw，由调用方决定如何呈现
+api.ts[IN9L]: F:前端到server.mjs的调用层：stream/claude/judge/pdf-extract/fetch-url/approvals的请求封装与按模型选择的分流 | R:code:server.mjs,code:src/lib/constants.ts,code:src/lib/agents/agent-runtime.ts,code:src/lib/direct-llm.ts,code:src/lib/runtime-providers.ts,code:src/lib/use-models.ts,code:src/lib/error-text.ts | A:llmCall与llmCallStream按模型分流：直连provider走directLlm*并绕过proxy的视觉改道，agent型模型走agentCallStream，否则POST到proxy；answerApproval对桌面runtime经壳的run通道回答、对harness桥只接受yes/no；providers只在已配置时才随请求携带，未配置时与纯.env设置字节一致；truncated帧转成onTruncated交调用方记录 | S:直连时文本模型带图必须在发出之前就用用户语言拒绝（proxy路径才保留改道加补救）；vision状态为unknown时保留像素，让第一次真实请求充当能力探针；非JSON的404是Express在说路由不存在，即proxy早于该端点启动，提示重启而不是照抄错误文本；所有传输错误一律throw，由调用方决定如何呈现；truncated只认length与steps两个字面值，代理换了说法这里就静默
 app-version.ts[CU3T]: F:应用版本来源：桌面壳经?dv=传入，web构建为null | R:- | A:- | S:-
 appearance.ts[CU5S]: F:外观store：明暗与纸纹两轴四象限（data-theme/data-paper） | R:- | A:- | S:-
 attachment-vault-boot.ts[CP4T]: F:附件库启动：迁移旧画布到vault与垃圾回收 | R:code:src/lib/attachment-vault.ts | A:- | S:-
@@ -342,13 +342,13 @@ canvas-chat.ts[DB6S]: F:问画布：模型读全图纲要+选中链全文作答�
 canvas-record.ts[DP5S]: F:画布瘦身JSON：交给桌面壳记录为why层的画布源 | R:code:src/lib/export.ts | A:- | S:-
 canvas-search.ts[DD4S]: F:画布全量精确搜索：问题/回答/便签等节点字段本地匹配 | R:- | A:- | S:-
 condense-guard.ts[CS3T]: F:凝练守卫：故意独立于condense.ts避免store环依赖 | R:- | A:- | S:-
-condense.ts[DB7M]: F:路径凝练：生成可追溯的精简副本（llm流式调用加autoLayout），原件不动 | R:code:src/lib/api.ts,code:src/lib/layout.ts | A:findCandidateSegments即时发现单入单出的非地标Q与A run（至少3长），不需要模型调用；每个run一次小的流式调用并携带此前run确立的brief，逐run可见进度 | S:凝练从不改原件，只在旁造一棵自足副本树；decision与pivot回合永不折叠；人标的高光逐字搬入因为判断不可压缩；叶子前3层受前沿保护，这是图事实不是模型判断
+condense.ts[DB7M]: F:路径凝练：生成可追溯的精简副本（llm流式调用加autoLayout），原件不动 | R:code:src/lib/api.ts,code:src/lib/layout.ts | A:findCandidateSegments即时发现单入单出的非地标Q与A run（至少3长），不需要模型调用；每个run一次小的流式调用并携带此前run确立的brief，逐run可见进度；每次流式调用有10分钟空闲上限，且reasoning帧算活性所以慢思考模型不会被误判停滞 | S:凝练从不改原件，只在旁造一棵自足副本树；decision与pivot回合永不折叠；人标的高光逐字搬入因为判断不可压缩；叶子前3层受前沿保护，这是图事实不是模型判断
 constants.ts[CC6T]: F:常量：API_BASE（dev本地/prod同源/api，VITE_API_BASE可覆盖）、颜色与面板尺寸 | R:- | A:- | S:-
 content.ts[DD8M]: F:内容节点域：便签、文件、链接等非对话节点的创建与接入、链接抓取、图片与PDF抽取与token计数 | R:code:src/lib/attachments.ts,code:src/lib/api.ts,code:src/store/streaming.ts,code:src/lib/layout.ts,code:src/lib/use-models.ts,code:src/components/ContentNode.tsx,code:src/lib/recall.ts | A:buildContentNode造出response为空且responseIndex为-1的材料节点；spawnContentNode在节点有正文时触发范式级联；clipboardTextToMarkdown把Word与Excel的TAB分隔选区转成markdown表格，其他内容原样通过 | S:材料节点永不生成：它们只通过出边供给上下文，并被autoLayout忽略；粘贴超过1200字时显式给height 480让正文滚动，小便签自然增长；link节点的linkSnapshotHtml只服务阅读器的原始视图，上下文读的仍是question里的抽取副本
 context-bundle.ts[DD6M]: F:Context Bundle编译：buildContext包装为v0 bundle（身份/指纹/出处） | R:code:src/store/context-builder.ts,code:src/lib/attachments.ts | A:- | S:-
 desktop-update-ui.ts[CU4T]: F:桌面更新提示：全部以应用内toast呈现 | R:- | A:- | S:-
 diagnostics.ts[DD6S]: F:拓扑诊断：残余边/影子引用/盲池/超长链等结构发现 | R:- | A:- | S:-
-direct-llm.ts[IN6M]: F:直连LLM调用封装：流式回调、引用与图片进入消息 | R:code:src/lib/constants.ts | A:- | S:-
+direct-llm.ts[IN6M]: F:直连LLM调用封装：流式回调、引用与图片进入消息，并把网关的finish_reason转成截断提示 | R:code:src/lib/constants.ts,code:src/lib/runtime-providers.ts,code:src/lib/api.ts | A::online变体零正文时改用普通模型重试一次；finish_reason为length时报onTruncated | S:这条路上没有工具循环，只有length一种截断可报；stream_options与reasoning这些扩展键只对OpenRouter发，更严的端点会拒绝未知键
 dossier.ts[DB6S]: F:dossier结构：单主题四段维护文档（是什么/已决策/现状/待办），变更留痕 | R:- | A:- | S:-
 edge-path.ts[DB5S]: F:连线绕行路径计算：避开节点体的正交路由 | R:code:src/lib/layout.ts | A:- | S:-
 embedded.ts[CE3T]: F:构建形态标志：VITE_DSH_BRIDGE与harness内iframe是构建期静态事实 | R:- | A:- | S:-
@@ -427,7 +427,7 @@ rule-out-rule-in.ts[DA6S]: F:内置范式：rule-out/rule-in鉴别推理——hu
 context-builder.ts[DB9L]: F:buildContext——编译'模型下一次看到什么'的核心函数：按分层上下文组装消息、图片与并行的出处，并给出上游指纹与各上游贡献 | R:code:src/lib/graph.ts,code:src/lib/attachments.ts,code:src/lib/highlight-match.ts,code:src/lib/utils.ts,code:src/lib/context-bundle.ts,code:src/store/streaming.ts | A:顺序规则是materials → reference块 → 链序的实时对话 → 当前问题最后；量在节点上控制（折叠加摘要、高光filter、归档），边只决定身份；sources与imageSources是并行的出处数组，只有bundle编译器需要，所以不拓宽线上格式；referenceBlockContent导出以便连线芯片与追问预览给出同一价格 | S:指纹只跟内容与结构、绝不跟压缩视图：isCollapsed与summary类字段一律归一化掉且本节点自身内容置空，否则后台摘要到达或卡片折叠会在下游伪造出'上游变了'；折叠是视图状态，永不改变流动的内容；同一张图必须永远产出同一prompt，与建边历史无关
 index.ts[DP7S]: F:主zustand store：八个切片组装成一个StoreState并persist到IndexedDB | R:code:src/lib/persistence.ts,code:src/store/types.ts,code:src/store/projects.ts,code:src/lib/viewer.ts | A:persist的name是占位，bootProjects在rehydrate前用setOptions把它指向活动画布自己的键；skipHydration为真所以水合时机由项目层决定；stripTransient在存与取两处都跑 | S:只持久化图：撤销史是整图快照乘50、会话级的，存进持久化会膨胀；viewer模式是访客会话，存储在这里就被换成空实现，决定在store创建处以免早期set()抢在替换之前
 projects.ts[DP8M]: F:项目层store：每张画布独立的IndexedDB键、元数据清单与切换编排，含canonical-canvas的会话账本 | R:code:src/store/index.ts,code:src/store/streaming.ts,code:src/lib/persistence.ts,code:src/lib/memory.ts,code:src/lib/paradigms/rule-out-rule-in.ts,code:src/components/ProjectSwitcher.tsx | A:projectStorageKey给每张画布一个独立键；ProjectMeta持有sourceSession账本（mainline加chapters加branches，每项按自己的importedCount幂等追加）；setProjectArchived归档活动画布时先切到最新的未归档者，没有就新建；agentCwd与agentGuard是画布级的agent边界 | S:元数据写入必须用裸idbSet：去抖的idbStorage只有一个留给主store的待定槽位，绝不能共用；归档与销毁是两个不同的动词，归档只从下拉与Recent工作隐藏、数据不动；provenanceSessions只能从图重算、绝不手写所以不会漂移，旧元数据缺失时走慢路径补上
-streaming.ts[DB9L]: F:节点生成的唯一流式管线：注册AbortController、流式写入data.response、完成时写版本化答案与上下文指纹，并触发摘要、记忆判定、autoRerun与范式级联 | R:code:src/store/context-builder.ts,code:src/lib/graph.ts,code:src/lib/api.ts,code:src/lib/agents/agent-runtime.ts,code:src/lib/atlas/dsh-bridge.ts,code:src/lib/recall.ts,code:src/lib/memory.ts,code:src/lib/ladder.ts | A:runNodeGeneration是唯一生成入口（viewer模式直接返回）；generateSummary写铭牌takeaway行与ladder；triggerAutoReruns滑动followsTip边并按每波预算重跑autoRerun节点；triggerParadigmCascade只在全部结构父完成时启动stepKind 'prompt'子节点 | S:代次序号决定归属：新代次中止旧流并丢弃其迟到写入（编辑问题加重跑曾把两条流写进同一节点）；autoRunCounts每次手动动作清零，writer→critic→writer环因此确定性终止；记忆块插在最后一条assistant之后以保持provider prompt cache前缀字节稳定；generatedBy记录实际执行的模型而非请求的模型
+streaming.ts[DB9L]: F:节点生成的唯一流式管线：注册AbortController、流式写入data.response、完成时写版本化答案与上下文指纹，并触发摘要、记忆判定、autoRerun与范式级联 | R:code:src/store/context-builder.ts,code:src/lib/graph.ts,code:src/lib/api.ts,code:src/lib/agents/agent-runtime.ts,code:src/lib/atlas/dsh-bridge.ts,code:src/lib/recall.ts,code:src/lib/memory.ts,code:src/lib/ladder.ts | A:runNodeGeneration是唯一生成入口（viewer模式直接返回）；generateSummary写铭牌takeaway行与ladder；triggerAutoReruns滑动followsTip边并按每波预算重跑autoRerun节点；triggerParadigmCascade只在全部结构父完成时启动stepKind 'prompt'子节点；onTruncated与错误文本经writeFinal落成按版本对齐的truncateds与failureReasons | S:代次序号决定归属：新代次中止旧流并丢弃迟到写入；autoRunCounts每次手动动作清零，writer→critic→writer环因此确定性终止；记忆块插在最后一条assistant之后以保住prompt cache前缀字节稳定；generatedBy记实际模型而非请求模型；生成路径故意不设超时与空闲看门狗：思考型模型可能几分钟才吐第一个答案token，任何时限都会误杀，半开流不报错时节点一直loading只能靠Stop；失败版本不写truncateds，但错误文本随版本存进failureReasons，toast只闪一次
 types.ts[CD7S]: F:store切片的接口形状：NodeSlice/LlmSlice/HistorySlice/EvaluatorSlice等，以及StoreState与PersistedState的组装 | R:code:src/store/index.ts,code:src/store/slices/nodes.ts,code:src/store/slices/llm.ts,code:src/types.ts,code:src/store/slices/evaluator.ts | A:AddQuestionOptions带noReader：来源自带阅读面的ask不弹全屏阅读视图；mentions里不在新节点上下文中的节点会获得真实的引用边（图保持诚实）；weaveHighlights的输入是人自己标的高光，所以整卷选择也让上下文很小 | S:staleIds/staleFps/staleVerdicts是派生值而非持久化状态，recomputeStaleness对nodes/edges去抖订阅；新切片必须同时加进StoreState交叉类型，否则各slice互相调用的StateCreator编译不过
 
 ===X:/00-github/thoughtdag/src/store/slices/===
@@ -436,7 +436,7 @@ evaluator.ts[DA5S]: F:评估slice：陈旧节点的展示与重算协调 | R:cod
 events.ts[DP3T]: F:画布操作事件log slice | R:- | A:- | S:-
 highlights.ts[DP4S]: F:高光slice：增删与织入数据 | R:- | A:- | S:-
 history.ts[DR4T]: F:撤销重做slice：HISTORY_LIMIT上限 | R:code:src/lib/constants.ts | A:- | S:-
-llm.ts[DB9L]: F:LLM slice：ask/重生成/分支的流式编排——buildContext结果交给api流 | R:code:src/store/context-builder.ts,code:src/lib/api.ts,code:src/lib/ui-store.ts | A:addQuestion/exploreFrom/regenerate在节点建成的同步一刻把新节点写成selectedNodeId并开阅读视图；opts.noReader的ask不开 | S:阅读视图在节点建成的同步一刻打开、早于任何模型请求：未配置key时视图先出现再报错，不是渲染bug
+llm.ts[DB9L]: F:LLM slice：ask/重生成/分支的流式编排——buildContext结果交给api流，并收尾没有流可中止的生成中节点 | R:code:src/store/context-builder.ts,code:src/lib/api.ts,code:src/lib/ui-store.ts,code:src/store/streaming.ts | A:addQuestion/exploreFrom/regenerate在节点建成的同步一刻把新节点写成selectedNodeId并开阅读视图；opts.noReader的ask不开；stopGeneration没有在飞流时把已流出的文本追加成一个新版本并清掉生成中 | S:阅读视图在节点建成的同步一刻打开、早于任何模型请求：未配置key时视图先出现再报错，不是渲染bug；stopGeneration没有登记AbortController时也必须收尾，否则停止钮只是装饰、节点永远停在生成中、追问框与回车一起死掉
 nodes.ts[DP8L]: F:节点与边的CRUD本体：删除与连带后代、版本导航与删除、多选复制与对齐、重排、归档、陈旧重算与实线/虚线转换 | R:code:src/lib/layout.ts,code:src/lib/graph.ts,code:src/store/context-builder.ts,code:src/store/streaming.ts,code:src/lib/condense-guard.ts,code:src/lib/atlas/canonical.ts,code:src/lib/highlight-match.ts | A:deleteNode连带删除全部结构后代并中止它们的在飞流；addCrossLink只挡完全相同的边；材料源默认接可看的引用边；setArchived让节点留在画布但退出所有上下文遍历 | S:删除即退订：deleteNode后必须调unsubscribeOrphanedSessions，否则镜像会话仍在订阅已删节点；手工改答案会使该版本的summary/summaryTypes/summaryTopics/summaryLadders全部作废并回落到本地ladder，生成时间戳保持不变；condenseGuard为真时删除、改题、改答一律拒绝；正在生成的节点被删时Stop按钮随卡片消失，只能在这里终止其流（#49）
 roles.ts[DP3T]: F:角色slice：刻意单一语义——节点上的rolePrompt | R:- | A:- | S:-
 
