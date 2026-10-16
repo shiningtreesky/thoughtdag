@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-10-08T05:57:00Z",
-  "updated_at": "2026-10-16T14:54:29Z",
+  "updated_at": "2026-10-16T16:29:12Z",
   "files": {
     ".claude/commands/thoughtdag.md": {
       "role": "index",
@@ -107,9 +107,9 @@
     },
     "aoci.code.txt": {
       "role": "index",
-      "sha256": "86ae0f724b5a2edf68033488c2473aa0f06c5a09c6445df063b1e5ebd9a3bc7c",
-      "size": 108471,
-      "normalized_sha256": "86ae0f724b5a2edf68033488c2473aa0f06c5a09c6445df063b1e5ebd9a3bc7c"
+      "sha256": "d489fe7ea3c6dbbb682d4898d54ad93e4123d072831175d8eba25e5d888b3030",
+      "size": 110549,
+      "normalized_sha256": "d489fe7ea3c6dbbb682d4898d54ad93e4123d072831175d8eba25e5d888b3030"
     },
     "aoci.meta.txt": {
       "role": "index",
@@ -1475,9 +1475,9 @@
     },
     "src/App.tsx": {
       "role": "index",
-      "sha256": "a506e6ecf9b0ef7290f7bd9e763da7f55269afdc48b35fb3a8be4ddbccd713c9",
-      "size": 123829,
-      "normalized_sha256": "b2ed58acd6107bb8c84c5e83bf1ba276b799bfa510060c41c09e4b838027bb33"
+      "sha256": "d2220ec5beaa24c4c92a9cfef19e252203ec9ffca95799d262050e5a591c3201",
+      "size": 126940,
+      "normalized_sha256": "0cb4be75fdbe2ec9abaa52cab1527f13507b912205c2f4b9ce483667801f3fe3"
     },
     "src/components/CanvasChat.tsx": {
       "role": "index",
@@ -1577,15 +1577,15 @@
     },
     "src/components/ThoughtNode.tsx": {
       "role": "index",
-      "sha256": "00aa946b9525d7f102477d0e55f0453a71cb4982231d10368f30aaf6eac20be0",
-      "size": 70604,
-      "normalized_sha256": "5f2b6bbfc0556f68e187ff3f63016f4cc910ac3a26663dbedf2b5f59ddb703f9"
+      "sha256": "5178e530f7354adb6eb97da29b72a434ba0efe0c145d98e918e5d26a042e7115",
+      "size": 71573,
+      "normalized_sha256": "89d985746dc59ee3fe1820faaa3022b33981071b8b66b054fb6e09439d7b343f"
     },
     "src/components/Tutorial.tsx": {
       "role": "index",
-      "sha256": "affa44fa4df988e6726128bdb53839d7a865418712b68149fb0580ffc1768433",
-      "size": 14686,
-      "normalized_sha256": "742f644b62668006e230a7f88d55fb2fa5ad616b26d593c076333ea349c320ef"
+      "sha256": "cc3cc53eb3974b4341e5a78dee9181b9e306ccc7ee81922986369d527a6b6313",
+      "size": 14736,
+      "normalized_sha256": "26c0dca48f2d39229dccb3fe87efaea96afca2e3645b1898b123260678e0edad"
     },
     "src/components/ZoomText.tsx": {
       "role": "index",
@@ -1889,9 +1889,9 @@
     },
     "src/i18n/en.ts": {
       "role": "index",
-      "sha256": "82df7129b3e3c1669060372be508be20abf7e62288d4d1c2803ebda60c5ad0a7",
-      "size": 95697,
-      "normalized_sha256": "660baaf9e028e656e20f1ebce759494580d44f242e7efed25dd811193b3a1e8a"
+      "sha256": "dbef95154bbcf942ecbd21ea006f526863eb63554dfd67d9c11af541c1b52891",
+      "size": 96002,
+      "normalized_sha256": "dd231cdd74ef11f7f645ea75f0a174f9a5e1b178c9c850a177c5992b7a56234d"
     },
     "src/i18n/index.ts": {
       "role": "index",
@@ -1901,15 +1901,15 @@
     },
     "src/i18n/zh.ts": {
       "role": "index",
-      "sha256": "51328a8d2f219f069ec48d1f0521bb69c58c3bd9fe695a39e0427f98b90e0492",
-      "size": 92162,
-      "normalized_sha256": "5da58c8e518432ba22d8a253fd8c1ee8f008bb28e17ad46dfab3af334551f61b"
+      "sha256": "8dd44b6ca393d9bd689946183933c0ac98426cd38803feeb4d0ee33b9f867224",
+      "size": 92451,
+      "normalized_sha256": "c74e59ceba6edbfbfdd2d9a488befa85e7c57ce7a27178cbe02ddc7c63ffdefd"
     },
     "src/index.css": {
       "role": "index",
-      "sha256": "079a3d65c2821a8e4fe129cf7299a64b93ae5c57576038707dfec0e610f1bb42",
-      "size": 33920,
-      "normalized_sha256": "ca2f75e4fbad84d93d813ee9a57903a1592c953bb8114f4a36741ef5c7501fb8"
+      "sha256": "6fd4cfe8236074c73e15f50dda8e1dc0e7114c7bf2fc61551e2d407443557a23",
+      "size": 36967,
+      "normalized_sha256": "6d7156f93c8d7172b40fad40a5232f6195acd53815baa47ecda2e8ae8d3ce3f8"
     },
     "src/lib/adapters/claude-code-session.ts": {
       "role": "index",
@@ -2243,9 +2243,9 @@
     },
     "src/lib/ladder-core.ts": {
       "role": "index",
-      "sha256": "2253b77032625cbf89eedf61943fdfb56ef54d13f4adfd7c98e5e0c70dd971f6",
-      "size": 13337,
-      "normalized_sha256": "e46a69386fac5a99f65b91a932660f7a424ba52a7f8d95330bde64541d43c2cc"
+      "sha256": "1a75087a4061a07abc3317c8c761cec67525162fa649521f6386668bde943f11",
+      "size": 13239,
+      "normalized_sha256": "0bf708a158e50cd9eaeb741869603474622d75eafd5ac5898d9c722397004132"
     },
     "src/lib/ladder-lab.ts": {
       "role": "index",
@@ -2379,6 +2379,12 @@
       "size": 3743,
       "normalized_sha256": "c900da0130a3ba4645702f65164db76a81a876970a1984bfbfd99e2505099a7b"
     },
+    "src/lib/return-view.ts": {
+      "role": "index",
+      "sha256": "0fef19f5ffe001fb2b79061d0cf23cf69e3ccf75dca873ef1ac0262603e28c24",
+      "size": 1081,
+      "normalized_sha256": "0fef19f5ffe001fb2b79061d0cf23cf69e3ccf75dca873ef1ac0262603e28c24"
+    },
     "src/lib/role-templates.ts": {
       "role": "index",
       "sha256": "f0844d3ee77adf43971048e60ea0512b7b053774b612fc139188555d5562a799",
@@ -2441,9 +2447,9 @@
     },
     "src/lib/ui-store.ts": {
       "role": "index",
-      "sha256": "53e1bda0497fa830b9dc71270da6e3a3b8fed8c76f8a6fe6201ba74b997d08bd",
-      "size": 26848,
-      "normalized_sha256": "8ddd285a401299a9cab67b3f8ea06f034fd39ead6f1b16145b1f1954d5d96044"
+      "sha256": "86d4941ed5f0d809cd763835da7901291ed37d1ca2b9e5f5628c6ff0abf9deec",
+      "size": 27279,
+      "normalized_sha256": "a0ab159c431fca49b731a793b1018f935010cd397ea4afcc3b80a0235b9c6f55"
     },
     "src/lib/update-check.ts": {
       "role": "index",
@@ -2453,9 +2459,9 @@
     },
     "src/lib/use-map-mode.ts": {
       "role": "index",
-      "sha256": "98b743fca6274a846c931b8f9b3fbbe1d95f14458b20d9fe79d433f6b3f7dd83",
-      "size": 1592,
-      "normalized_sha256": "eea0f14455562d812b60b13efa643d781969dde21848abbf822f554b917db8c3"
+      "sha256": "74c8250d1a9f67f2c0e34404205014769b4f7a4240998076c12303a5bd279289",
+      "size": 1736,
+      "normalized_sha256": "39629fb8a8aed6b377ee41ad4f4c947943f3776a790020c5f42c66579b467b37"
     },
     "src/lib/use-mcp.ts": {
       "role": "index",
