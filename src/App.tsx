@@ -54,7 +54,7 @@ import { buildContext } from './store/context-builder';
 import { exportActiveParadigm, exportActiveProjectJson, exportEventLogCsv } from './lib/export';
 import { countTokens } from './utils';
 import { buildExampleGraph } from './lib/example-graph';
-import { COLORS, FRAME_COLORS, PANEL_INSET } from './lib/constants';
+import { COLLAPSED_LAYOUT_HEIGHT, COLORS, FRAME_COLORS, NODE_CSS_WIDTH, PANEL_INSET } from './lib/constants';
 import { panelShift } from './lib/panel-shift';
 import { migrateActiveCanvasToVault, gcVaultAtBoot } from './lib/attachment-vault-boot';
 import { consumeOpenRouterCallback, handMintedKeyToModal, startOpenRouterOAuth } from './lib/openrouter-oauth';
@@ -1204,7 +1204,9 @@ function Canvas() {
         <ZoomTierTag />
         <ThoughtMapPill panelShiftWidth={panelOpen ? livePanelWidth : 0} />
         <TimelineBar />
-        <Controls position="bottom-left" />
+        <Controls position="bottom-left">
+          <PaperZoomButton />
+        </Controls>
         {nodes.length > 0 && <MiniMap
           nodeColor={(node) => {
             const data = node.data as Record<string, unknown>;
@@ -2106,7 +2108,7 @@ function Canvas() {
         if (!rf || members.length === 0) return;
         const xs = members.map((n) => n.position.x), ys = members.map((n) => n.position.y);
         const x = Math.min(...xs), y = Math.min(...ys);
-        const w = Math.max(...xs) + 520 - x, h = Math.max(...ys) + 240 - y;
+        const w = Math.max(...xs) + NODE_CSS_WIDTH - x, h = Math.max(...ys) + COLLAPSED_LAYOUT_HEIGHT - y;
         // widen rightwards: the condense panel covers the right edge
         rf.fitBounds({ x, y, width: w + 700, height: h }, { duration: 350, padding: 0.15 });
       }} />
@@ -2221,4 +2223,44 @@ function ZoomTierTag() {
     (document.querySelector('.react-flow') as HTMLElement | null)?.style.setProperty('--tdag-zoom', String(zoom));
   }, [zoom]);
   return null;
+}
+
+// 1:1 — the PAPER level. Zoom is set to exactly 1.0, so a turn's sheet renders
+// at its true 210 × 297 mm (794 × 1123 CSS px at 96dpi): what is on the canvas
+// is the size the page would have on paper. A sheet is taller than a laptop
+// window, so the viewport lands on the TOP of the selected page — centring it
+// would put the beginning of the answer above the fold. With nothing selected
+// it is a plain zoom preset and the viewport centre is left alone.
+function PaperZoomButton() {
+  const rf = useReactFlow();
+  const t = useT();
+  return (
+    <button
+      type="button"
+      className="react-flow__controls-button tdag-paper-zoom"
+      title={t('controls.paperZoom')}
+      aria-label={t('controls.paperZoom')}
+      onClick={(e) => {
+        e.stopPropagation();
+        const st = useStore.getState();
+        const node = st.nodes.find((n) => n.id === st.selectedNodeId);
+        if (!node) {
+          void rf.zoomTo(1, { duration: 300 });
+          return;
+        }
+        const rect = document.querySelector('.react-flow')?.getBoundingClientRect();
+        const w = node.measured?.width ?? NODE_CSS_WIDTH;
+        rf.setViewport(
+          {
+            x: (rect?.width ?? window.innerWidth) / 2 - (node.position.x + w / 2),
+            y: 24 - node.position.y,
+            zoom: 1,
+          },
+          { duration: 300 },
+        );
+      }}
+    >
+      1:1
+    </button>
+  );
 }

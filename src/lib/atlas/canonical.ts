@@ -436,7 +436,8 @@ function makeNote(text: string, beside: ThoughtNode): ThoughtNode {
     ? { ...beside.data.importSource, itemIds: [] }
     : undefined;
   note.width = 460;
-  note.position = { x: beside.position.x - 520, y: beside.position.y };
+  // parks left of the turn with a 60px gap (the note is 460 wide)
+  note.position = { x: beside.position.x - (460 + 60), y: beside.position.y };
   return note;
 }
 

@@ -498,6 +498,7 @@ export const zh: Record<keyof typeof en, string> = {
   'panel.expandResponse': '放大阅读这条回答',
   'panel.response': '回答',
   'panel.more': '更多操作',
+  'controls.paperZoom': '缩放到 100%：一张 A4 纸的真实大小',
   // Material reader (the reading overlay)
   'reader.open': '阅读并提问',
   'reader.viewOriginal': '原版',

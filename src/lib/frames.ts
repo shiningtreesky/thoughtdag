@@ -1,4 +1,5 @@
 import type { ThoughtNode } from '../types';
+import { NODE_CSS_WIDTH } from './constants';
 
 // Frame membership, decided in ONE place for everything that asks (frame
 // dragging, auto layout). A frame is a region: an ordinary node belongs to
@@ -23,7 +24,7 @@ export function frameRect(frame: ThoughtNode): Rect {
 /** A node's centre, with the card's default footprint before it is measured. */
 export function nodeCenter(node: ThoughtNode): { x: number; y: number } {
   return {
-    x: node.position.x + (node.measured?.width ?? 520) / 2,
+    x: node.position.x + (node.measured?.width ?? NODE_CSS_WIDTH) / 2,
     y: node.position.y + (node.measured?.height ?? 120) / 2,
   };
 }

@@ -498,6 +498,7 @@ export const en = {
   'panel.expandResponse': 'Open this answer in a large view',
   'panel.response': 'Response',
   'panel.more': 'More actions',
+  'controls.paperZoom': 'Zoom to 100% — an A4 sheet at its true size',
   // Material reader (the reading overlay)
   'reader.open': 'Read & ask',
   'reader.viewOriginal': 'Original',

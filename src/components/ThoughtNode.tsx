@@ -26,7 +26,7 @@ import ReasoningDisclosure from './ui/ReasoningDisclosure';
 import ZoomText from './ZoomText';
 import { useLocalLadder } from '../lib/local-ladder-cache';
 import { estimateNodeHeight } from '../lib/layout';
-import { COLLAPSED_LAYOUT_HEIGHT, LAYOUT_V_GAP } from '../lib/constants';
+import { COLLAPSED_LAYOUT_HEIGHT, LAYOUT_V_GAP, NODE_CSS_WIDTH } from '../lib/constants';
 import { levelText } from '../lib/ladder-core';
 import { usePlaqueClip } from '../lib/use-plaque-clip';
 import { ApprovalCard } from './ui/ApprovalCard';
@@ -386,14 +386,13 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
   const staleRing = isStale && glyphTier ? ' ring-4 ring-amber-400' : '';
   // "Continue last thread" hover: this node is the flight destination
   const isBeacon = useUiStore((s) => s.beaconNodeId === id);
-  const showSummaryCard = !!versionSummary && data.response.length > 400 && !data.isLoading && !data.isEditingResponse;
 
   return (
     <div
       ref={nodeRef}
       className={glyphTier
         ? `w-[520px] animate-fade-in transition-all duration-200 ${isBeacon ? 'beacon-node ' : ''}${data.archived ? 'opacity-35 saturate-50 ' : ''}${selectedNodeId === id ? 'glyph-selected ' : ''}`
-        : `thought-node relative rounded-xl w-[520px] animate-fade-in transition-all duration-200 ${isBeacon ? 'beacon-node ' : ''}${zoomedOut ? 'map-node ' : ''}${condenseLit ? 'condense-lit ' : ''}${data.archived ? 'opacity-35 saturate-50 ' : ''}${isWaitingUpstream ? 'opacity-60 ' : ''}${
+        : `thought-node a4-sheet relative flex flex-col rounded-[3px] w-[794px] ${!zoomedOut && !data.isCollapsed ? 'h-[1123px] ' : ''}animate-fade-in transition-all duration-200 ${isBeacon ? 'beacon-node ' : ''}${zoomedOut ? 'map-node ' : ''}${condenseLit ? 'condense-lit ' : ''}${data.archived ? 'opacity-35 saturate-50 ' : ''}${isWaitingUpstream ? 'opacity-60 ' : ''}${
         data.isEvaluator ? 'evaluator-node' : isHuman ? 'human-node' : isBranch ? 'orange-node' : isRoot ? 'root-node' : 'branch-node'
       } ${data.isLoading ? 'loading-border' : ''} ${selectedNodeId === id ? 'ring-2 ring-accent !border-accent selected-glow' : ''} ${isDropTarget ? 'ring-2 ring-accent/50 ring-dashed' : ''}`}
       onClick={() => setSelectedNodeId(id)}
@@ -557,7 +556,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
       ) : (
       <>
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-line cursor-grab active:cursor-grabbing drag-handle">
+      <div className="shrink-0 flex items-center justify-between px-8 py-3.5 border-b border-line cursor-grab active:cursor-grabbing drag-handle">
         <div className="flex items-center gap-2">
           <button onClick={() => toggleCollapse(id)} className={`hover:bg-wash rounded-lg w-7 h-7 flex items-center justify-center transition-all text-sm font-bold ${data.isCollapsed ? 'text-accent bg-accent/10' : 'text-ink-faint'}`}>
             {data.isCollapsed ? <ChevronRight size={18} strokeWidth={1.75} /> : <ChevronDown size={18} strokeWidth={1.75} />}
@@ -577,7 +576,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
                 if (src.length === 0) return;
                 useUiStore.getState().setCondenseHighlightIds(data.condensedFrom!);
                 const xs = src.map((n) => n.position.x), ys = src.map((n) => n.position.y);
-                rf.fitBounds({ x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) + 520 - Math.min(...xs), height: Math.max(...ys) + 240 - Math.min(...ys) }, { duration: 350, padding: 0.2 });
+                rf.fitBounds({ x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) + NODE_CSS_WIDTH - Math.min(...xs), height: Math.max(...ys) + COLLAPSED_LAYOUT_HEIGHT - Math.min(...ys) }, { duration: 350, padding: 0.2 });
                 window.setTimeout(() => useUiStore.getState().setCondenseHighlightIds([]), 2600);
               }}
               title={t('node.condensedFromTitle')}
@@ -671,7 +670,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
       </div>
 
       {!data.isCollapsed && (
-        <div className="px-5 py-4">
+        <div className="flex flex-1 min-h-0 flex-col px-8 py-6">
           {/* The passage this branch explores: without it the user loses
               the thread that spawned the node. Page-anchored ones carry a
               p.N chip that reopens the reader at that page, thread open —
@@ -768,7 +767,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
             // keeps the wheel on the text, not the canvas zoom).
             <div
               onDoubleClick={handleDoubleClickQuestion}
-              className="question-md markdown-body text-sm text-ink font-semibold mb-3 cursor-pointer hover:bg-wash rounded-xl px-2 py-1.5 -mx-1 transition-colors max-h-[180px] overflow-y-auto nowheel nopan"
+              className="question-md shrink-0 markdown-body text-sm text-ink font-semibold mb-3 cursor-pointer hover:bg-wash rounded-xl px-2 py-1.5 -mx-1 transition-colors max-h-[240px] overflow-y-auto nowheel nopan"
             >
               {/* a question is markdown like an answer (lists, code, emphasis), set compact; the plaques above keep the plain text */}
               <Markdown>{data.question}</Markdown>
@@ -862,20 +861,10 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
               </div>
             </div>
           ) : (
-            showSummaryCard ? (
-              // the map shows the landmark, not the terrain photo: an auto
-              // summary of THIS version (display only — the model reads the
-              // full text; double-click opens the panel for humans)
-              <div className="px-3 py-2.5 bg-surface rounded-xl nopan" title={t('node.summaryTitle')}>
-                <span className="text-2xs bg-wash text-ink-faint px-1.5 py-0.5 rounded-full">{t('node.summaryLabel')}</span>
-                {badge && (
-                  <span title={badgeTitle} data-takeaway-badge className={`text-2xs px-1.5 py-0.5 rounded-full ml-1.5 font-medium ${badge.cls}`}>
-                    {badge.glyph} {t(badge.key as Parameters<typeof t>[0])}
-                  </span>
-                )}
-                <div className="text-sm text-ink-muted leading-relaxed mt-1.5">{versionSummary}</div>
-              </div>
-            ) : (
+            // A page shows the writing, not a picture of the writing: the auto
+            // summary is a MAP object — it labels the plaque one zoom step out —
+            // and never stands in for the answer on the sheet itself. The
+            // thinking stays folded above the text until it is asked for.
             <>
             {versionReasoning && (
               <ReasoningDisclosure text={versionReasoning} maxHeightClass="max-h-[240px]" />
@@ -883,7 +872,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
             <div
               ref={responseRef}
               onClick={handleResponseClick}
-              className="markdown-body text-sm text-ink leading-relaxed max-h-[400px] overflow-y-auto cursor-text nopan nodrag nowheel px-3 py-2.5 bg-surface rounded-xl"
+              className="markdown-body flex-1 min-h-0 leading-relaxed overflow-y-auto cursor-text nopan nodrag nowheel px-3 py-2.5 bg-surface rounded-xl"
             >
               {highlightedTexts.size > 0 || exploreSpecs.length > 0 ? (
                 <HighlightedMarkdown content={data.response} highlights={highlightedTexts} exploreMarks={exploreSpecs} />
@@ -892,7 +881,6 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
               )}
             </div>
             </>
-            )
           )}
 
           {/* Fan-out placeholder: the human decides when to expand */}
@@ -938,7 +926,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
               on THIS answer live right under it (regenerate = new version in
               place; the sibling-branch variant lives in the panel's ⋯ menu) */}
           {data.response && !data.isLoading && !data.isEditingResponse && !isHuman && !isAwaitingAsk && !data.generationFailed && (
-            <div className="mt-1.5 flex items-center gap-0.5 text-ink-faint">
+            <div className="mt-1.5 shrink-0 flex items-center gap-0.5 text-ink-faint">
               {!isViewerMode && (
                 <button
                   onClick={(e) => { e.stopPropagation(); void rerunNode(id, {}); }}
@@ -1053,7 +1041,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
               progress (the structure IS the paradigm); returns on unlock */}
           {!data.isLoading && !data.isEditingResponse && !isAwaitingAsk && !(isParadigmNode && runLocked) && !isViewerMode && selectedNodeId !== id && (
             <div
-              className="mt-3 pt-3 border-t border-line relative"
+              className="mt-3 shrink-0 pt-3 border-t border-line relative"
               // Clicking into the continue box must not select the node. React Flow
               // selects on pointerdown, App's onSelectionChange then sets
               // selectedNodeId WITHOUT opening the panel, and this very box is
@@ -1097,7 +1085,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
 
       {/* Collapsed view — question + summary */}
       {data.isCollapsed && (
-        <div className="px-5 py-3">
+        <div className="px-8 py-4">
           <div className="text-sm text-ink font-semibold truncate flex items-center gap-1.5">
             {data.question.slice(0, 80)}{data.question.length > 80 ? '…' : ''}
             {(data.attachments?.length > 0) && (

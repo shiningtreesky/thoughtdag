@@ -6,6 +6,7 @@ import { useUiStore } from '../../lib/ui-store';
 import { useZoomTier } from '../../lib/use-map-mode';
 import { useDateLocale, useT } from '../../i18n';
 import { collectTimeline } from '../../lib/timeline';
+import { A4_HEIGHT, NODE_CSS_WIDTH } from '../../lib/constants';
 import { panelShift } from '../../lib/panel-shift';
 
 // The map's second axis. Space answers "where is it in the graph"; this rail
@@ -56,7 +57,7 @@ export function TimelineBar() {
     const x0 = -tx / z, y0 = -ty / z, x1 = (vw - tx) / z, y1 = (vh - ty) / z;
     const s = new Set<string>();
     for (const e of entries) {
-      if (e.x + 520 > x0 && e.x < x1 && e.y + 220 > y0 && e.y < y1) s.add(e.id);
+      if (e.x + NODE_CSS_WIDTH > x0 && e.x < x1 && e.y + A4_HEIGHT > y0 && e.y < y1) s.add(e.id);
     }
     return s;
   }, [entries, transform, vw, vh]);

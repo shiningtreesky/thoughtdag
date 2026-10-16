@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { ThoughtNode, ThoughtEdge } from '../../types';
 import { generateId, countTokens } from '../../utils';
-import { COLORS } from '../../lib/constants';
+import { COLORS, NODE_CSS_WIDTH } from '../../lib/constants';
 import { healLegacyNoteEdges, autoLayout, estimateNodeHeight, nodeHeight } from '../../lib/layout';
 import { getDescendantIds, walkUpAncestors } from '../../lib/graph';
 import { referenceBlockContent, upstreamFingerprint, buildContext } from '../context-builder';
@@ -501,7 +501,7 @@ export const createNodeSlice: StateCreator<StoreState, [], [], NodeSlice> = (set
     const boxOf = (n: ThoughtNode) => ({
       x: n.position.x,
       y: n.position.y,
-      w: n.measured?.width ?? n.width ?? 520,
+      w: n.measured?.width ?? n.width ?? NODE_CSS_WIDTH,
       h: n.measured?.height ?? n.height ?? nodeHeight(n),
     });
 

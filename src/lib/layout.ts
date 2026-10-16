@@ -1,29 +1,15 @@
 import type { ThoughtNode, ThoughtEdge } from '../types';
 import { getDescendantIds } from './graph';
 import { frameContains, frameMembers, frameRect, isFrameNode } from './frames';
-import { COLLAPSED_LAYOUT_HEIGHT, LAYOUT_COL_WIDTH, LAYOUT_H_GAP, LAYOUT_V_GAP } from './constants';
+import { A4_HEIGHT, COLLAPSED_LAYOUT_HEIGHT, LAYOUT_COL_WIDTH, LAYOUT_H_GAP, LAYOUT_V_GAP } from './constants';
 
 // Estimated rendered height of a node — fallback when React Flow hasn't
-// measured the DOM yet (fresh nodes) and for collapse shifting. Every
-// variable region of the card is height-capped in CSS (question scrolls at
-// 180px, the answer at 400px), so the estimate caps each part the same way
-// — an uncapped formula here would keep spreading nodes for content the
-// card no longer grows for.
+// measured the DOM yet (fresh nodes) and for collapse shifting. An expanded
+// turn is a fixed A4 sheet: content never grows the page (the answer scrolls
+// inside it), so the footprint is simply the sheet. A folded turn is a paper
+// strip and keeps the taller folded footprint the map plaque needs.
 export function estimateNodeHeight(node: ThoughtNode): number {
-  if (node.data.isCollapsed) return COLLAPSED_LAYOUT_HEIGHT;
-  // Calibrated against measured DOM heights (2026-08): CJK markdown renders
-  // ~1px per char at card width before the 400px CSS cap, chrome (header +
-  // takeaway line + follow-up input + paddings) runs ~215px, and each
-  // highlight row adds its own line. Under-estimating here is what made
-  // map-mode relayout overlap once zoomed back in.
-  const questionH = Math.min(180, 40 + (node.data.question || '').length / 1.2);
-  const responseH = Math.min(400, (node.data.response || '').length / 1.05);
-  const highlightsH = (node.data.highlights?.length ?? 0) * 26;
-  // tool fingerprints + composition bar render an extra header row on
-  // imported turns — un-counted, tool-heavy codex cards overlapped
-  const insightH = (node.data.attachments?.length ?? 0) > 0 ? 30 : 0;
-  const estimated = 215 + questionH + responseH + highlightsH + insightH;
-  return Math.max(260, Math.min(930, estimated));
+  return node.data.isCollapsed ? COLLAPSED_LAYOUT_HEIGHT : A4_HEIGHT;
 }
 
 // Height used for layout: the larger of the measured DOM height (React
@@ -588,7 +574,10 @@ export function autoLayout(allNodes: ThoughtNode[], allEdges: ThoughtEdge[]): Th
     const targetId = allEdges.find((e) => e.source === note.id)?.target;
     const tp = targetId ? positioned.get(targetId) : undefined;
     if (!tp) continue;
-    let x = tp.x - 520;
+    // The note parks LEFT of the turn it annotates with a fixed 60px gap; the
+    // offset is the note's own width plus that gap, not the turn's width (the
+    // old 520 happened to be both, which read as "one card wide").
+    let x = tp.x - NOTE_W - 60;
     let y = tp.y;
     if (collides(x, y)) { x = tp.x; y = tp.y - NOTE_H - 40; }
     if (collides(x, y)) {

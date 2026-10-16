@@ -202,6 +202,30 @@ code, pre {
   fill: var(--color-accent) !important;
 }
 
+/* 1:1 (the paper level) joins the built-in column. <Controls> renders its own
+   children LAST in the DOM, so flex order — not markup — puts it beside the
+   zoom buttons instead of under the lock toggle. The separators follow the
+   visual order: the built-in rule drops border-bottom from the DOM-last button
+   (ours), so ours draws its own and the lock toggle stops drawing its own. */
+.react-flow__controls-interactive {
+  order: 2;
+  border-bottom: none !important;
+}
+
+.tdag-paper-zoom {
+  order: 1;
+  border-bottom: 1px solid var(--color-line) !important;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-ink-muted) !important;
+}
+
+.tdag-paper-zoom:hover {
+  color: var(--color-accent) !important;
+}
+
 .react-flow__minimap {
   background: var(--color-card) !important;
   border: 1px solid var(--color-line) !important;
@@ -300,7 +324,7 @@ textarea:focus-visible {
   top: 0;
   bottom: 0;
   width: 3px;
-  border-radius: 12px 0 0 12px; /* hug the card's rounded-xl corners */
+  border-radius: 3px 0 0 3px; /* hug the A4 sheet's near-square corners */
   background: transparent;
 }
 
@@ -308,6 +332,25 @@ textarea:focus-visible {
   border-color: var(--color-line-strong);
   box-shadow: 0 4px 14px rgba(0,0,0,0.09), 0 2px 4px rgba(0,0,0,0.05);
   transform: translateY(-1px);
+}
+
+/* A4 sheet dialect: a turn is a PAGE, not a chip. Flat white stock, a hairline
+   edge, and a shadow that falls away from the sheet the way paper does on a
+   desk — deeper and softer than the UI chip shadow, so a page of text reads as
+   one object rather than a floating panel. Map plaques (below) keep their pill
+   radius and their lighter elevation. */
+.thought-node.a4-sheet:not(.map-node) {
+  box-shadow:
+    0 1px 1px rgba(0,0,0,0.05),
+    0 2px 6px rgba(0,0,0,0.06),
+    0 14px 30px -16px rgba(0,0,0,0.24);
+}
+
+.thought-node.a4-sheet:not(.map-node):hover {
+  box-shadow:
+    0 1px 1px rgba(0,0,0,0.05),
+    0 4px 10px rgba(0,0,0,0.08),
+    0 20px 38px -18px rgba(0,0,0,0.28);
 }
 
 .root-node::before {

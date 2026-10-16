@@ -11,13 +11,20 @@ export const PDF_VISION_PAGE_THRESHOLD = 10;
 // Undo stack depth (full-graph snapshots).
 export const HISTORY_LIMIT = 50;
 
-// Rendered node card width (ThoughtNode w-[520px]).
-export const NODE_CSS_WIDTH = 520;
+// A turn renders as an A4 SHEET on the canvas: 210 × 297 mm at CSS 96dpi
+// (1mm = 3.7795px). The sheet is a fixed page — short answers leave the rest
+// of the page blank, long answers scroll inside it — so a node's footprint is
+// constant and the layout never has to guess a variable card height.
+export const A4_WIDTH = 794;
+export const A4_HEIGHT = 1123;
+
+// Rendered node card width (ThoughtNode w-[794px]).
+export const NODE_CSS_WIDTH = A4_WIDTH;
 
 // Layout column pitch — wider than the card so edges have breathing room.
 // Gaps sit at the tight end: enough air for the wires and the edge chips,
 // no more — a denser canvas keeps more of the graph in one glance.
-export const LAYOUT_COL_WIDTH = 540;
+export const LAYOUT_COL_WIDTH = A4_WIDTH + 20;
 export const LAYOUT_H_GAP = 64;
 // 72 was lifted from a real working canvas — the density its author settled
 // into by hand; a third more air (2026-09) so the map-zoom plaques, which
