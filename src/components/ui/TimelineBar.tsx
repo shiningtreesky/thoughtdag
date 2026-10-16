@@ -7,7 +7,7 @@ import { useZoomTier } from '../../lib/use-map-mode';
 import { useDateLocale, useT } from '../../i18n';
 import { collectTimeline } from '../../lib/timeline';
 import { A4_HEIGHT, NODE_CSS_WIDTH } from '../../lib/constants';
-import { panelShift } from '../../lib/panel-shift';
+import { panelShift, sheetCenter } from '../../lib/panel-shift';
 
 // The map's second axis. Space answers "where is it in the graph"; this rail
 // answers "when did I think it". Not a floating panel — a bare ruler drawn
@@ -131,12 +131,18 @@ export function TimelineBar() {
                 // (in world units) to land the node beside it, not under it.
                 onClick={() => {
                   setSelectedNodeId(e.id);
+                  const node = useStore.getState().nodes.find((n) => n.id === e.id);
+                  if (!node) return;
+                  const c = sheetCenter(node);
                   const zoom = rf.getViewport().zoom;
-                  rf.setCenter(e.x + 260 + panelShift(e.id) / (2 * zoom), e.y + 110, { zoom, duration: 300 });
+                  rf.setCenter(c.x + panelShift(e.id) / (2 * zoom), c.y, { zoom, duration: 300 });
                 }}
                 onDoubleClick={() => {
                   setSelectedNodeId(e.id);
-                  rf.setCenter(e.x + 260 + panelShift(e.id) / 2, e.y + 110, { zoom: 1, duration: 350 });
+                  const node = useStore.getState().nodes.find((n) => n.id === e.id);
+                  if (!node) return;
+                  const c = sheetCenter(node);
+                  rf.setCenter(c.x + panelShift(e.id) / 2, c.y, { zoom: 1, duration: 350 });
                 }}
                 className="relative flex items-center w-full h-[14px] shrink-0 pl-[29px] cursor-pointer"
                 aria-label={e.label}

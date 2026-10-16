@@ -10,10 +10,14 @@ import type { Ladder, LadderItem, LadderToken } from '../types';
 export const LADDER_LEVELS = ['topic', 'takeaway', 'brief', 'abstract'] as const;
 export type LadderLevel = 0 | 1 | 2 | 3;
 /** canvas-space font size per level; on screen it is × zoom */
-/** canvas-space font size per level; on screen it is × zoom. With HANDOFF_PX 12 (+1.2 hysteresis) the
- *  bands inside the map tier are roughly L1 0.34–0.54, L2 0.54–0.74, L3 0.74–0.9, then the card unfolds;
- *  text at a handoff is ~16 px on screen (was 13: the user found it small). */
-export const LEVEL_FONT: Record<LadderLevel, number> = { 0: 72, 1: 48, 2: 30, 3: 22 };
+/** canvas-space font size per level; on screen it is × zoom. The map tier now runs
+ *  0.25–0.5 (a sheet stays a sheet down to half size), so these sizes were raised to
+ *  move the handoffs INTO that band instead of leaving them stranded above it: with
+ *  HANDOFF_PX 15 (+1.2 hysteresis) the bands are roughly L1 0.29–0.37, L2 0.37–0.44,
+ *  L3 0.44–0.5, then the sheet unfolds. Text at a handoff is still ~15 px on screen —
+ *  legibility was the whole point of raising the canvas sizes rather than lowering the
+ *  threshold (13 px was already found too small). */
+export const LEVEL_FONT: Record<LadderLevel, number> = { 0: 78, 1: 52, 2: 41, 3: 34 };
 /** a level takes over when ITS text reaches this many pixels on screen */
 export const HANDOFF_PX = 15;
 export const HANDOFF_HYST = 1.2;

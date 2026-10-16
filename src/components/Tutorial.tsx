@@ -265,6 +265,8 @@ export default function Tutorial() {
           <span>{t('shortcut.marqueeKeys')} {t('shortcut.marquee')}</span>
           <span>{'\u2318'}F {t('shortcut.search')}</span>
           <span>Space {t('shortcut.collapse')}</span>
+          <span>F {t('shortcut.frame')}</span>
+          <span>Z {t('shortcut.return')}</span>
           <span>R {t('shortcut.regenerate')}</span>
           <span>{'\u2191\u2193\u2190\u2192'} {t('shortcut.navigate')}</span>
           <span>{'\u2318'}Z/{'\u21E7'}{'\u2318'}Z {t('shortcut.undo')}</span>

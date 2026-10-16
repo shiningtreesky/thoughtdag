@@ -1,7 +1,8 @@
 import { useUiStore } from './ui-store';
 import { useStore } from '../store';
-import { PANEL_INSET } from './constants';
-import type { ThoughtData } from '../types';
+import { nodeHeight } from './layout';
+import { COLLAPSED_LAYOUT_HEIGHT, NODE_CSS_WIDTH, PANEL_INSET } from './constants';
+import type { ThoughtData, ThoughtNode } from '../types';
 
 /** Horizontal screen-pixel shift that recenters a node in the strip of
     canvas the focus panel leaves visible — without it, "center on node"
@@ -15,4 +16,16 @@ export function panelShift(nodeId: string): number {
   const kind = (useStore.getState().nodes.find((n) => n.id === nodeId)?.data as ThoughtData | undefined)?.stepKind;
   if (kind === 'note' || kind === 'file' || kind === 'link' || kind === 'frame') return 0;
   return ui.panelWidth + PANEL_INSET + 12;
+}
+
+/** The world point a node should be CENTRED on: the middle of its layout
+    footprint. A turn is an A4 sheet open / a strip folded; a material card
+    centres on its own measured size. Height goes through the layout estimate
+    rather than the raw DOM measurement, because a node rendered as a map
+    plaque measures short — centring on that would land the sheet we are
+    flying TO below the viewport instead of in it. */
+export function sheetCenter(node: ThoughtNode): { x: number; y: number } {
+  const w = node.measured?.width ?? (typeof node.width === 'number' ? node.width : NODE_CSS_WIDTH);
+  const h = node.data?.isCollapsed ? COLLAPSED_LAYOUT_HEIGHT : Math.max(node.measured?.height ?? 0, nodeHeight(node));
+  return { x: node.position.x + w / 2, y: node.position.y + h / 2 };
 }

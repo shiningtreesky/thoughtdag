@@ -16,7 +16,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import 'highlight.js/styles/github.css';
-import { ArrowRight, BookOpen, Bot, Brain, CircleHelp, Download, Drama, Eye, FileText, FolderSync, Frame, GitBranch, Hand, Highlighter, History as HistoryIcon, ImageDown, KeyRound, LayoutGrid, ListRestart, Loader2, MessageCircleQuestion, Maximize2, Minimize2, MoreHorizontal, Paperclip, Redo2, Rewind, Scissors, Search, Share2, SquareTerminal, Star, Stethoscope, StickyNote, Trash2, Undo2, Workflow, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Bot, Brain, Check, CircleHelp, Download, Drama, Eye, FileText, FolderSync, Frame, GitBranch, Hand, Highlighter, History as HistoryIcon, ImageDown, KeyRound, LayoutGrid, ListRestart, Loader2, MessageCircleQuestion, Maximize2, Minimize2, MoreHorizontal, Paperclip, Redo2, Rewind, Scissors, Search, Share2, SquareTerminal, Star, Stethoscope, StickyNote, Tag, Trash2, Undo2, Workflow, X } from 'lucide-react';
 import './index.css';
 import ThoughtNode from './components/ThoughtNode';
 import ParadigmNode from './components/ParadigmNode';
@@ -55,7 +55,7 @@ import { exportActiveParadigm, exportActiveProjectJson, exportEventLogCsv } from
 import { countTokens } from './utils';
 import { buildExampleGraph } from './lib/example-graph';
 import { COLLAPSED_LAYOUT_HEIGHT, COLORS, FRAME_COLORS, NODE_CSS_WIDTH, PANEL_INSET } from './lib/constants';
-import { panelShift } from './lib/panel-shift';
+import { panelShift, sheetCenter } from './lib/panel-shift';
 import { migrateActiveCanvasToVault, gcVaultAtBoot } from './lib/attachment-vault-boot';
 import { consumeOpenRouterCallback, handMintedKeyToModal, startOpenRouterOAuth } from './lib/openrouter-oauth';
 import { bootDesktopUpdateUI } from './lib/desktop-update-ui';
@@ -87,6 +87,7 @@ import { useT, t as ti, fmt, useI18n } from './i18n';
 import { isViewerMode, buildViewerLink } from './lib/viewer';
 import { useModels } from './lib/use-models';
 import { useZoomTier } from './lib/use-map-mode';
+import { saveReturnView, takeReturnView } from './lib/return-view';
 import { TimelineBar } from './components/ui/TimelineBar';
 import TimelineOverviewModal from './components/ui/TimelineOverviewModal';
 import { useStore as useRfStore, useReactFlow } from '@xyflow/react';
@@ -251,34 +252,39 @@ function Canvas() {
   const paperTexture = useAppearance((s) => s.paper);
   const lightingChoice = useAppearance((s) => s.lighting);
   const resolvedTheme = useAppearance((s) => s.resolved);
+  const canvasTone = useAppearance((s) => s.canvasTone);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const themePalette = useMemo(() => edgePalette(), [resolvedTheme]);
-  // minimap colors resolve per theme too (its mask is the canvas surface)
+  // minimap colors resolve per theme too (its mask is the canvas ground)
   const minimapColors = useMemo(() => {
     const cs = getComputedStyle(document.documentElement);
-    const surface = (cs.getPropertyValue('--color-surface').trim() || '#FAF9F7').replace('#', '');
-    const [r, g, b] = [0, 2, 4].map((i) => parseInt(surface.slice(i, i + 2), 16));
+    const ground = (cs.getPropertyValue('--canvas-bg').trim() || '#FAF9F7').replace('#', '');
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(ground.slice(i, i + 2), 16));
+    // on the dim desk the hierarchy has to survive the shrink: a page reads
+    // LIGHTER than the ground, an archived page closer to it — the same order
+    // the canvas itself carries (white sheet / faded sheet / desk)
+    const dim = resolvedTheme === 'light' && canvasTone === 'dim';
     return {
       mask: `rgba(${r},${g},${b},0.7)`,
-      archived: cs.getPropertyValue('--color-wash').trim() || '#EFEDE9',
-      ordinary: resolvedTheme === 'dark' ? '#6E6759' : '#B9B3AB',
+      archived: dim ? '#C9C3B8' : (cs.getPropertyValue('--color-wash').trim() || '#EFEDE9'),
+      ordinary: resolvedTheme === 'dark' ? '#6E6759' : dim ? '#F2F0EC' : '#B9B3AB',
     };
-   
-  }, [resolvedTheme]);
+  }, [resolvedTheme, canvasTone]);
   const prevNodeCount = useRef(nodes.length);
   // Every "center on node" goes through here: when the focus panel is open
   // the visual center sits half the panel further left, so the target shifts
   // right by panelShift/2 in world units — otherwise the node parks under
-  // the panel.
-  const centerNode = useCallback((n: { id: string; position: { x: number; y: number } }, opts: { zoom?: number; duration?: number; offX?: number } = {}) => {
+  // the panel. The point itself is the middle of the node's LAYOUT footprint
+  // (sheetCenter), so a turn centres as the A4 sheet it is, not as the plaque
+  // it happens to be rendered as at this zoom.
+  // Every departure records where you were, so Z can hand it back (lib/return-view).
+  const centerNode = useCallback((n: ThoughtNodeType, opts: { zoom?: number; duration?: number } = {}) => {
     const rf = rfInstance.current;
     if (!rf) return;
     const zoom = opts.zoom ?? rf.getZoom();
-    rf.setCenter(
-      n.position.x + (opts.offX ?? 260) + panelShift(n.id) / (2 * zoom),
-      n.position.y + 110,
-      { zoom, duration: opts.duration ?? 350 },
-    );
+    const c = sheetCenter(n);
+    saveReturnView(rf.getViewport());
+    rf.setCenter(c.x + panelShift(n.id) / (2 * zoom), c.y, { zoom, duration: opts.duration ?? 350 });
   }, []);
   const lang = useI18n((s) => s.lang);
   const condenseRunState = useUiStore((s) => s.condenseRun);
@@ -534,7 +540,7 @@ function Canvas() {
     if (nodes.length > prevNodeCount.current && rfInstance.current) {
       const newest = nodes[nodes.length - 1];
       if (newest) {
-        setTimeout(() => centerNode(newest, { zoom: 1, duration: 400, offX: 220 }), 100);
+        setTimeout(() => centerNode(newest, { zoom: 1, duration: 400 }), 100);
       }
     }
     prevNodeCount.current = nodes.length;
@@ -727,6 +733,21 @@ function Canvas() {
         setSearchOpen(true);
         return;
       }
+      // Z: step back out of a sheet to the view the last navigation left. This
+      // is NOT Cmd+Z - it moves the camera only and never touches the canvas,
+      // which is why it does not require a selection: you may well have clicked
+      // away while reading. No snapshot stored, nothing happens.
+      {
+        const zTarget = e.target as HTMLElement;
+        const zTyping = zTarget.tagName === 'INPUT' || zTarget.tagName === 'TEXTAREA' || zTarget.isContentEditable;
+        if (!zTyping && !e.metaKey && !e.ctrlKey && !e.altKey && (e.key === 'z' || e.key === 'Z')) {
+          const back = takeReturnView();
+          if (back) {
+            e.preventDefault();
+            rfInstance.current?.setViewport(back, { duration: 300 });
+          }
+        }
+      }
       {
         const target = e.target as HTMLElement;
         const inField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
@@ -736,6 +757,15 @@ function Canvas() {
           if (e.key === ' ') {
             e.preventDefault();
             useStore.getState().toggleCollapse(selectedNodeId);
+            return;
+          }
+          // F: frame the selected turn — its sheet centred in the viewport at
+          // the paper's true size. The keyboard twin of the 1:1 control, same
+          // framing, so a person never has to leave the keyboard to read.
+          if (e.key === 'f' || e.key === 'F') {
+            e.preventDefault();
+            const framed = ns.find((n) => n.id === selectedNodeId);
+            if (framed) centerNode(framed, { zoom: 1, duration: 300 });
             return;
           }
           // R: regenerate in place (same semantic as the UI button)
@@ -1203,9 +1233,13 @@ function Canvas() {
         )}
         <ZoomTierTag />
         <ThoughtMapPill panelShiftWidth={panelOpen ? livePanelWidth : 0} />
+        <ZoomReadout />
         <TimelineBar />
         <Controls position="bottom-left">
+          <CanvasToneButton />
           <PaperZoomButton />
+          <HalfZoomButton />
+          <GlyphLabelsButton />
         </Controls>
         {nodes.length > 0 && <MiniMap
           nodeColor={(node) => {
@@ -2131,6 +2165,21 @@ function Canvas() {
 }
 
 
+// How far the canvas is from the paper's true size, stated outright so nobody
+// has to infer the zoom from how large the text looks. A READOUT, not a control:
+// no pointer events, no affordance, nothing to click — the 1:1 button and the F
+// key are the controls, this just reports what they did. It rides the bottom
+// centre line and lifts above the map dock when the dock is out (the dock
+// publishes its own height as --tdag-dock-h). Must live inside <ReactFlow>.
+function ZoomReadout() {
+  const zoom = useRfStore((s) => s.transform[2]);
+  return (
+    <div className="tdag-zoom-readout text-2xs font-mono text-ink-faint" data-zoom-readout>
+      {Math.round(zoom * 100)}%
+    </div>
+  );
+}
+
 // Stamps the current semantic-zoom tier on the canvas element so CSS can
 // restyle global layers, and streams the live zoom into a CSS variable so
 // glyph seals and edges can counter-scale (POI style: world position,
@@ -2162,19 +2211,43 @@ function ThoughtMapPill({ panelShiftWidth }: { panelShiftWidth: number }) {
     return best ? { node: best, at: bestAt } : null;
   }, [nodes]);
 
-  if (isViewerMode || tier === 'work' || nodeCount < 2) return null;
+  const dockRef = useRef<HTMLDivElement>(null);
+  const dockVisible = !isViewerMode && tier !== 'work' && nodeCount >= 2;
+  // The dock owns the bottom-centre line. The zoom readout that stacks above it
+  // needs the dock's REAL height, so the dock publishes its own measurement as
+  // a CSS variable rather than the readout guessing a magic offset that breaks
+  // whenever the pill's content changes.
+  useEffect(() => {
+    const flow = document.querySelector('.react-flow') as HTMLElement | null;
+    if (!flow) return;
+    if (!dockVisible) {
+      flow.style.setProperty('--tdag-dock-h', '0px');
+      return;
+    }
+    const measure = () => flow.style.setProperty('--tdag-dock-h', `${dockRef.current?.offsetHeight ?? 0}px`);
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (dockRef.current) ro.observe(dockRef.current);
+    return () => {
+      ro.disconnect();
+      flow.style.setProperty('--tdag-dock-h', '0px');
+    };
+  }, [dockVisible]);
+
+  if (!dockVisible) return null;
 
   const flyBack = () => {
     if (!lastActive) return;
     useUiStore.getState().setBeaconNodeId(null);
     const { node } = lastActive;
-    rf.setCenter(node.position.x + 260, node.position.y + 110, { zoom: 1, duration: 1100 });
+    const c = sheetCenter(node);
+    rf.setCenter(c.x, c.y, { zoom: 1, duration: 1100 });
     // three beats: flight → panel opens (recentered for its width) → recap toast
     window.setTimeout(() => {
       useStore.getState().setSelectedNodeId(node.id);
       useUiStore.getState().setPanelOpen(true);
       window.setTimeout(() => {
-        rf.setCenter(node.position.x + 260 + panelShift(node.id) / 2, node.position.y + 110, { zoom: 1, duration: 300 });
+        rf.setCenter(c.x + panelShift(node.id) / 2, c.y, { zoom: 1, duration: 300 });
       }, 60);
     }, 1150);
     window.setTimeout(() => {
@@ -2185,6 +2258,7 @@ function ThoughtMapPill({ panelShiftWidth }: { panelShiftWidth: number }) {
 
   return (
     <div
+      ref={dockRef}
       className="absolute bottom-6 z-10 flex items-center gap-2 -translate-x-1/2 transition-[left] duration-300"
       style={{ left: `calc((100% - ${panelShiftWidth}px) / 2)` }}
       data-map-dock
@@ -2227,10 +2301,10 @@ function ZoomTierTag() {
 
 // 1:1 — the PAPER level. Zoom is set to exactly 1.0, so a turn's sheet renders
 // at its true 210 × 297 mm (794 × 1123 CSS px at 96dpi): what is on the canvas
-// is the size the page would have on paper. A sheet is taller than a laptop
-// window, so the viewport lands on the TOP of the selected page — centring it
-// would put the beginning of the answer above the fold. With nothing selected
-// it is a plain zoom preset and the viewport centre is left alone.
+// is the size the page would have on paper. Framing is the same as the F
+// shortcut — the sheet's own centre lands on the viewport's centre — so the
+// control and the key are two doors to one room. With nothing selected it is a
+// plain zoom preset and the viewport centre is left alone.
 function PaperZoomButton() {
   const rf = useReactFlow();
   const t = useT();
@@ -2242,25 +2316,125 @@ function PaperZoomButton() {
       aria-label={t('controls.paperZoom')}
       onClick={(e) => {
         e.stopPropagation();
+        saveReturnView(rf.getViewport());
         const st = useStore.getState();
         const node = st.nodes.find((n) => n.id === st.selectedNodeId);
-        if (!node) {
-          void rf.zoomTo(1, { duration: 300 });
-          return;
-        }
-        const rect = document.querySelector('.react-flow')?.getBoundingClientRect();
-        const w = node.measured?.width ?? NODE_CSS_WIDTH;
-        rf.setViewport(
-          {
-            x: (rect?.width ?? window.innerWidth) / 2 - (node.position.x + w / 2),
-            y: 24 - node.position.y,
-            zoom: 1,
-          },
-          { duration: 300 },
-        );
+        if (!node) { void rf.zoomTo(1, { duration: 300 }); return; }
+        const c = sheetCenter(node);
+        rf.setCenter(c.x + panelShift(node.id) / 2, c.y, { zoom: 1, duration: 300 });
       }}
     >
       1:1
     </button>
+  );
+}
+
+// 0.5 — the threshold level. Zoom is set to exactly 0.5, which is the boundary
+// the tiers were built around: at 0.5 a sheet is still a sheet (it unfolds into
+// plaques only below it), at half the paper's linear size. Unlike 1:1 this is
+// never a framing move - the viewport centre is the anchor and a selection is
+// ignored, because at this level you are choosing HOW MUCH of the canvas you
+// see, not which page to read.
+function HalfZoomButton() {
+  const rf = useReactFlow();
+  const t = useT();
+  return (
+    <button
+      type="button"
+      className="react-flow__controls-button tdag-half-zoom"
+      title={t('controls.halfZoom')}
+      aria-label={t('controls.halfZoom')}
+      onClick={(e) => {
+        e.stopPropagation();
+        saveReturnView(rf.getViewport());
+        void rf.zoomTo(0.5, { duration: 300 });
+      }}
+    >
+      0.5
+    </button>
+  );
+}
+
+// Glyph captions: the master switch that puts EVERY seal's question on the
+// canvas at once. At the glyph tier a seal's content is otherwise reachable
+// one hover at a time, which makes the whole-canvas view unreadable. Offered
+// ONLY at that tier: at map scale the plaques already carry their text, and at
+// work scale you are reading the page itself, so a caption would be noise.
+function GlyphLabelsButton() {
+  const t = useT();
+  const tier = useZoomTier();
+  const on = useUiStore((s) => s.glyphLabels);
+  const setOn = useUiStore((s) => s.setGlyphLabels);
+  const enabled = tier === 'glyph';
+  const label = enabled ? t('controls.glyphLabels') : t('controls.glyphLabelsOff');
+  return (
+    <button
+      type="button"
+      className={`react-flow__controls-button tdag-glyph-labels${on && enabled ? ' tdag-toggle-on' : ''}`}
+      title={label}
+      aria-label={label}
+      aria-pressed={on}
+      disabled={!enabled}
+      onClick={(e) => { e.stopPropagation(); setOn(!on); }}
+    >
+      <Tag size={14} strokeWidth={1.75} />
+    </button>
+  );
+}
+
+// Canvas tone: the DESK the sheets lie on. Two swatches, opened from the
+// control itself — the sheets are never part of the deal and stay white.
+// Disabled under a dark theme, where the canvas is already dark and a second
+// ground colour would only fight it.
+function CanvasToneButton() {
+  const t = useT();
+  const resolved = useAppearance((s) => s.resolved);
+  const tone = useAppearance((s) => s.canvasTone);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const dark = resolved === 'dark';
+  const SWATCHES: { key: 'light' | 'dim'; label: string; hex: string }[] = [
+    { key: 'light', label: t('controls.canvasToneLight'), hex: '#FAF9F7' },
+    { key: 'dim', label: t('controls.canvasToneDim'), hex: '#A8A39A' },
+  ];
+  return (
+    <>
+      <button
+        type="button"
+        className="react-flow__controls-button tdag-canvas-tone"
+        title={dark ? t('controls.canvasToneDark') : t('controls.canvasTone')}
+        aria-label={t('controls.canvasTone')}
+        disabled={dark}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (menu) { setMenu(null); return; }
+          const r = e.currentTarget.getBoundingClientRect();
+          setMenu({ x: r.right + 8, y: r.top });
+        }}
+      >
+        <span className="tdag-canvas-swatch" aria-hidden />
+      </button>
+      {menu && (
+        <>
+          {/* click anywhere to dismiss — the menu is a choice, not a mode */}
+          <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />
+          <div
+            className="fixed z-50 flex flex-col gap-1 bg-card border border-line rounded-xl shadow-lg p-1.5"
+            style={{ left: menu.x, top: menu.y }}
+          >
+            {SWATCHES.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => { useAppearance.getState().setCanvasTone(s.key); setMenu(null); }}
+                className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors ${tone === s.key ? 'bg-wash text-ink' : 'text-ink-muted hover:bg-wash'}`}
+              >
+                <span className="w-5 h-5 rounded-md border border-line-strong shrink-0" style={{ background: s.hex }} />
+                <span className="whitespace-nowrap">{s.label}</span>
+                {tone === s.key && <Check size={13} strokeWidth={2.25} className="text-accent ml-1" />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </>
   );
 }

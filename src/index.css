@@ -37,6 +37,10 @@
 
 :root {
   color-scheme: light;
+  /* the canvas GROUND — the plane the sheets lie on. It is deliberately NOT
+     --color-surface: surface is also the tint inside a sheet (the answer
+     block), and dimming the desk must never dim the paper. */
+  --canvas-bg: #FAF9F7;
   /* canvas texture (React Flow Background strokes) */
   --canvas-dot: #E8E5E0;
   --canvas-grid-fine: rgba(84, 100, 128, 0.10);
@@ -49,6 +53,7 @@
 /* the drafting board runs a touch cooler than reading paper (light only) */
 :root[data-paper='grid']:not([data-theme='dark']) {
   --color-surface: #F7F6F2;
+  --canvas-bg: #F7F6F2;
 }
 
 :root[data-theme='dark'] {
@@ -68,6 +73,7 @@
   --color-warm: #E3A45E;
   --color-trace: #D9A83E;
   --color-watch: #E0796F;
+  --canvas-bg: #211E18;
   --canvas-dot: #423B2E;
   --canvas-grid-fine: rgba(237, 231, 218, 0.05);
   --canvas-grid-major: rgba(237, 231, 218, 0.11);
@@ -165,10 +171,25 @@
   border-radius: 0;
 }
 
+/* dim desk: the canvas ground drops to a low-glare grey so a wall of white
+   sheets stops burning into the eyes. LIGHT theme only — a dark canvas is
+   already dark, and the control is disabled there. The sheets are untouched:
+   they read --color-card (white) and their inner tint reads --color-surface,
+   neither of which this rule moves. Placed after the grid and dark blocks so
+   it wins over the grid's own --canvas-bg. */
+:root[data-canvas-tone='dim']:not([data-theme='dark']) {
+  --canvas-bg: #A8A39A;
+  /* texture re-anchored to the new ground: the specks stay a shade DARKER than
+     the desk, the same relationship they had on the light one */
+  --canvas-dot: #97918A;
+  --canvas-grid-fine: rgba(26, 26, 26, 0.10);
+  --canvas-grid-major: rgba(26, 26, 26, 0.20);
+}
+
 html, body, #root {
   width: 100%;
   height: 100%;
-  background: var(--color-surface);
+  background: var(--canvas-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
   line-height: 1.6;
@@ -181,7 +202,7 @@ code, pre {
 
 /* ReactFlow overrides */
 .react-flow__background {
-  background: var(--color-surface) !important;
+  background: var(--canvas-bg) !important;
 }
 
 .react-flow__controls {
@@ -202,14 +223,44 @@ code, pre {
   fill: var(--color-accent) !important;
 }
 
-/* 1:1 (the paper level) joins the built-in column. <Controls> renders its own
-   children LAST in the DOM, so flex order — not markup — puts it beside the
-   zoom buttons instead of under the lock toggle. The separators follow the
+/* The three custom controls join the built-in column. <Controls> renders its
+   own children LAST in the DOM, so flex order — not markup — puts them beside
+   the zoom buttons instead of under the lock toggle. The separators follow the
    visual order: the built-in rule drops border-bottom from the DOM-last button
-   (ours), so ours draws its own and the lock toggle stops drawing its own. */
+   (the caption toggle), so every custom button draws its own and the lock
+   toggle — last VISUALLY but not in the DOM — stops drawing its own. */
 .react-flow__controls-interactive {
-  order: 2;
+  order: 4;
   border-bottom: none !important;
+}
+
+.tdag-glyph-labels {
+  order: 3;
+  border-bottom: 1px solid var(--color-line) !important;
+}
+
+.tdag-glyph-labels:disabled {
+  opacity: 0.4;
+}
+
+.tdag-glyph-labels.tdag-toggle-on {
+  color: var(--color-accent) !important;
+  fill: var(--color-accent) !important;
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent) !important;
+}
+
+.tdag-half-zoom {
+  order: 2;
+  border-bottom: 1px solid var(--color-line) !important;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-ink-muted) !important;
+}
+
+.tdag-half-zoom:hover {
+  color: var(--color-accent) !important;
 }
 
 .tdag-paper-zoom {
@@ -226,8 +277,45 @@ code, pre {
   color: var(--color-accent) !important;
 }
 
+/* Canvas tone: first in the column, above the zoom pair. Its face IS the
+   setting — a swatch of the current desk colour, so the state is legible
+   without opening the menu. */
+.tdag-canvas-tone {
+  order: -1;
+}
+
+.tdag-canvas-swatch {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1px solid var(--color-line-strong);
+  background: var(--canvas-bg);
+}
+
+.react-flow__controls-button:disabled.tdag-canvas-tone {
+  opacity: 0.45;
+}
+
+/* Zoom readout: plain text on the canvas, deliberately NOT a control — no box,
+   no border, no pointer events, so it can never be mistaken for one of the
+   buttons beside it. bottom-centre, lifted above the map dock by the height the
+   dock publishes for itself (0 when the dock is hidden at the work tier). */
+.tdag-zoom-readout {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(24px + var(--tdag-dock-h, 0px) + 8px);
+  z-index: 10;
+  pointer-events: none;
+  user-select: none;
+  transition: bottom 0.2s ease;
+}
+
 .react-flow__minimap {
-  background: var(--color-card) !important;
+  /* the minimap is a picture OF the canvas, so it wears the canvas ground —
+     a white box sitting on a dimmed desk would fight the very thing the dim
+     tone exists to calm */
+  background: var(--canvas-bg) !important;
   border: 1px solid var(--color-line) !important;
   border-radius: 12px !important;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
@@ -677,6 +765,41 @@ body.tdag-connecting, body.tdag-connecting * {
    At zoom = 0.32 the factor is exactly 1 — the tier transition is seamless. */
 [data-zoom-tier='glyph'] [data-glyph-node] > span {
   transform: scale(calc(0.32 / var(--tdag-zoom, 0.32)));
+}
+
+/* Glyph captions: the seal's question as a real label rather than a hover
+   tooltip, so the whole canvas reads at a glance instead of one seal at a
+   time. Sized in SCREEN pixels by dividing each measurement through the zoom —
+   the same end the seal's counter-scale reaches, but reached per property so
+   the caption keeps its own crisp 13px type instead of being a blurred bitmap.
+   A caption that shrank with the canvas would be a caption nobody can read. */
+[data-zoom-tier='glyph'] .tdag-glyph-caption {
+  z-index: 5;
+  /* translate-centred on the row, NOT left-0/right-0: stretched to the node's
+     own width the caption would be ellipsised down to three characters. */
+  width: max-content;
+  max-width: calc(340px / var(--tdag-zoom, 0.32));
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+[data-zoom-tier='glyph'] [data-glyph-label] {
+  display: inline-block;
+  margin-top: calc(5px / var(--tdag-zoom, 0.32));
+  padding: calc(3px / var(--tdag-zoom, 0.32)) calc(8px / var(--tdag-zoom, 0.32));
+  border-style: solid;
+  border-color: var(--color-line);
+  border-width: calc(1px / var(--tdag-zoom, 0.32));
+  border-radius: calc(6px / var(--tdag-zoom, 0.32));
+  background: var(--color-card);
+  box-shadow: 0 0 calc(4px / var(--tdag-zoom, 0.32)) rgba(0, 0, 0, 0.14);
+  color: var(--color-ink-muted);
+  font-size: calc(13px / var(--tdag-zoom, 0.32));
+  line-height: 1.35;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Edges thicken at glyph zoom so the skeleton stays legible at distance */

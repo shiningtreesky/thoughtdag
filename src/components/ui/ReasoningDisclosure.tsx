@@ -7,12 +7,12 @@ import { useT } from '../../i18n';
 // (data-driven adaptation, no capability registry) and NEVER sent anywhere:
 // not into context, fingerprints, summaries or exports beyond raw JSON.
 //
-// `maxHeightClass` is the surface's own limit. Left out, an opened disclosure
-// renders as continuous text and the surrounding scroll container handles it -
-// the panel and the reading view do that, so a long chain of thought reads top
-// to bottom and any stretch of it can be selected and asked about. The card
-// keeps a cap: it is a plaque, and one long thought would blow it up.
-export default function ReasoningDisclosure({ text, maxHeightClass }: { text: string; maxHeightClass?: string }) {
+// An opened disclosure renders as continuous text and the SURFACE's own scroll
+// region carries the length — the card page, the panel and the reading view all
+// scroll, so a long chain of thought reads top to bottom and any stretch of it
+// can be selected and asked about. Capping it here would plant a second,
+// narrower scrollbar inside the surface's own scrollbar.
+export default function ReasoningDisclosure({ text }: { text: string }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   return (
@@ -27,7 +27,7 @@ export default function ReasoningDisclosure({ text, maxHeightClass }: { text: st
       </button>
       {open && (
         <div
-          className={`mt-1.5 px-3 py-2 bg-wash/70 rounded-xl text-xs text-ink-faint italic leading-relaxed whitespace-pre-wrap break-words nowheel nodrag cursor-text${maxHeightClass ? ` ${maxHeightClass} overflow-y-auto` : ''}`}
+          className="mt-1.5 px-3 py-2 bg-wash/70 rounded-xl text-xs text-ink-faint italic leading-relaxed whitespace-pre-wrap break-words nowheel nodrag cursor-text"
           data-reasoning-body
         >
           {text}

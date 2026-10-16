@@ -13,6 +13,7 @@ import { useStore } from '../store';
 import { staleHiddenByJudge, currentStaleVerdict } from '../lib/stale-judge';
 import { CONCLUSIVE_SETTLED } from '../lib/judge';
 import { useZoomTier } from '../lib/use-map-mode';
+import { getScrollOffset, setScrollOffset } from '../lib/scroll-memory';
 import { generateId, isImeComposing , activeSummary, activeTopic, awaitingInput, formatStamp } from '../utils';
 import { processFile } from '../lib/attachments';
 import { copyText } from '../lib/export';
@@ -76,6 +77,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
   const [editValue, setEditValue] = useState(data.question);
   const [editResponseValue, setEditResponseValue] = useState(data.response);
   const responseRef = useRef<HTMLDivElement>(null);
+  const flowRef = useRef<HTMLDivElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
   const questionTaRef = useRef<HTMLTextAreaElement>(null);
   const addQuestion = useStore((s) => s.addQuestion);
@@ -112,6 +114,10 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
   const zoomedOut = mapMode && !isAwaitingHuman && !isAwaitingAsk && !(isParadigmNode && runLocked);
   // Glyph tier: the node collapses to one seal — the thinking's skeleton
   const glyphTier = zoomTier === 'glyph' && zoomedOut;
+  // The master switch for glyph captions: at glyph tier a seal's question is
+  // otherwise only reachable one hover at a time.
+  const glyphLabels = useUiStore((s) => s.glyphLabels);
+  const glyphCaption = data.question ? data.question.replace(/\s+/g, ' ').trim() : '';
   // Handles move to hug the seal at glyph tier — tell React Flow to re-measure
   const updateNodeInternals = useUpdateNodeInternals();
   useEffect(() => { updateNodeInternals(id); }, [glyphTier, id, updateNodeInternals]);
@@ -354,6 +360,27 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
   const plaqueCap = Math.max(COLLAPSED_LAYOUT_HEIGHT + LAYOUT_V_GAP / 2, estimateNodeHeight({ id, data } as ThoughtNodeType));
   const plaqueLine = useRef<HTMLDivElement>(null);
   usePlaqueClip(plaqueLine, zoomedOut && !glyphTier && !!versionLadder, plaqueCap, versionLadder);
+
+  // A remounted scroll region always starts at the top, and this sheet remounts
+  // on every tier change, every collapse and every pan that carries it off
+  // screen. Put the reader back where they stopped. The page may still be growing
+  // when this runs (KaTeX, images), so wait until it is deep enough to hold the
+  // remembered spot instead of clamping it to whatever height exists right now.
+  useEffect(() => {
+    if (zoomedOut || data.isCollapsed) return;
+    const saved = getScrollOffset(id);
+    if (!saved) return;
+    let raf = 0;
+    let tries = 0;
+    const attempt = () => {
+      const el = flowRef.current;
+      if (!el) return;
+      if (el.scrollHeight - el.clientHeight >= saved || ++tries > 30) el.scrollTop = saved;
+      else raf = requestAnimationFrame(attempt);
+    };
+    attempt();
+    return () => cancelAnimationFrame(raf);
+  }, [id, zoomedOut, data.isCollapsed]);
   const takeawayType = data.summaryTypes?.[data.responseIndex] ?? undefined;
   const takeawayConfidence = data.summaryTypeConfidences?.[data.responseIndex] ?? undefined;
   const conclusive = data.summaryConclusiveness?.[data.responseIndex] ?? undefined;
@@ -462,7 +489,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
         // Typed moves keep their color, takeaway-bearing steps spark ✦,
         // evaluators wear the red eye, digests the book, plain steps a dot.
         <div
-          className="drag-handle cursor-grab active:cursor-grabbing w-full h-32 flex items-center justify-center"
+          className="drag-handle cursor-grab active:cursor-grabbing relative w-full h-32 flex items-center justify-center"
           title={[
             data.isEvaluator
               ? t('evaluator.badge')
@@ -490,6 +517,16 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
             </span>
           ) : (
             <span className={`w-14 h-14 rounded-full bg-ink/25 border-4 border-card shadow-md${staleRing}`} />
+          )}
+          {glyphLabels && glyphCaption && (
+            // A caption, not a tooltip: every seal's question at once, so the
+            // whole canvas reads at a glance instead of one hover at a time.
+            // The ROW is translate-centred and sized by max-content — pinned to
+            // the node's own width it would be clipped to three characters, and
+            // the caption is allowed to be wider than the seal it hangs from.
+            <div className="tdag-glyph-caption absolute left-1/2 top-full">
+              <span data-glyph-label>{glyphCaption.length > 24 ? `${glyphCaption.slice(0, 24)}…` : glyphCaption}</span>
+            </div>
           )}
         </div>
       ) : zoomedOut ? (
@@ -692,6 +729,18 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
               )}
             </div>
           )}
+
+          {/* One continuous scroll region. The page is a fixed A4, so the
+              question, the thinking and the answer flow in ONE column under ONE
+              scrollbar. Capping any of them created a second, narrower scrollbar
+              INSIDE the page — reading a long chain of thought inside a 240px
+              window is worse than scrolling the page once. */}
+          <div
+            ref={flowRef}
+            onScroll={(e) => setScrollOffset(id, e.currentTarget.scrollTop)}
+            className="flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto nopan nowheel"
+            data-page-flow
+          >
           {/* Question */}
           {(data.isEditing && !panelOwnsEditor) || isAwaitingHuman || isAwaitingAsk ? (
             <div>
@@ -762,12 +811,11 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
               )}
             </div>
           ) : (
-            // Long pasted questions must not stretch the card: same pattern
-            // as the answer block — cap the height, scroll inside (nowheel
-            // keeps the wheel on the text, not the canvas zoom).
+            // A pasted question is text like any other: it flows in the page's
+            // own scroll region rather than being capped in a window of its own.
             <div
               onDoubleClick={handleDoubleClickQuestion}
-              className="question-md shrink-0 markdown-body text-sm text-ink font-semibold mb-3 cursor-pointer hover:bg-wash rounded-xl px-2 py-1.5 -mx-1 transition-colors max-h-[240px] overflow-y-auto nowheel nopan"
+              className="question-md markdown-body text-sm text-ink font-semibold cursor-pointer hover:bg-wash rounded-xl px-2 py-1.5 transition-colors nopan"
             >
               {/* a question is markdown like an answer (lists, code, emphasis), set compact; the plaques above keep the plain text */}
               <Markdown>{data.question}</Markdown>
@@ -776,7 +824,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
 
           {/* Highlights */}
           {data.highlights.length > 0 && (
-            <div className="mb-3 flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1">
               {data.highlights.map((h) => (
                 <span key={h.id} className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
                   <Star size={14} strokeWidth={1.75} />
@@ -867,12 +915,12 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
             // thinking stays folded above the text until it is asked for.
             <>
             {versionReasoning && (
-              <ReasoningDisclosure text={versionReasoning} maxHeightClass="max-h-[240px]" />
+              <ReasoningDisclosure text={versionReasoning} />
             )}
             <div
               ref={responseRef}
               onClick={handleResponseClick}
-              className="markdown-body flex-1 min-h-0 leading-relaxed overflow-y-auto cursor-text nopan nodrag nowheel px-3 py-2.5 bg-surface rounded-xl"
+              className="markdown-body leading-relaxed cursor-text nopan nodrag px-3 py-2.5 bg-surface rounded-xl"
             >
               {highlightedTexts.size > 0 || exploreSpecs.length > 0 ? (
                 <HighlightedMarkdown content={data.response} highlights={highlightedTexts} exploreMarks={exploreSpecs} />
@@ -882,6 +930,7 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
             </div>
             </>
           )}
+          </div>
 
           {/* Fan-out placeholder: the human decides when to expand */}
           {data.stepKind === 'fanout' && !hasFanoutChildren && !data.isLoading && (

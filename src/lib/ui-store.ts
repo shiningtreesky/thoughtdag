@@ -76,6 +76,10 @@ interface UiState {
       the individual switches — turn it off and each lane's own setting
       applies again. */
   simpleMode: boolean;
+  /** Glyph tier: show every seal's question as a caption at once, instead of
+      one hover tooltip at a time. Only meaningful at the glyph tier. */
+  glyphLabels: boolean;
+  setGlyphLabels: (on: boolean) => void;
   /** View mode: hide frames + unlinked content nodes (annotation layer off). */
   annotationsHidden: boolean;
   /** Canvas wheel: false (default) zooms, true pans (trackpad style; zoom by pinch or ⌘/Ctrl + wheel). */
@@ -345,6 +349,11 @@ export const useUiStore = create<UiState>((set, get) => ({
   setSimpleMode: (on) => {
     localStorage.setItem('thoughtdag.simpleMode', on ? 'on' : 'off');
     set({ simpleMode: on });
+  },
+  glyphLabels: localStorage.getItem('thoughtdag.glyphLabels') === 'on',
+  setGlyphLabels: (on) => {
+    localStorage.setItem('thoughtdag.glyphLabels', on ? 'on' : 'off');
+    set({ glyphLabels: on });
   },
   memories: (() => {
     try {
