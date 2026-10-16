@@ -230,8 +230,21 @@ code, pre {
    (the caption toggle), so every custom button draws its own and the lock
    toggle — last VISUALLY but not in the DOM — stops drawing its own. */
 .react-flow__controls-interactive {
-  order: 4;
+  order: 5;
   border-bottom: none !important;
+}
+
+/* Flow dots: mutes the gliding overlay on EVERY lit arrow at once. The stroke
+   itself is untouched, so the chain stays readable — only the movement goes. */
+.tdag-edge-flow {
+  order: 4;
+  border-bottom: 1px solid var(--color-line) !important;
+}
+
+.tdag-edge-flow.tdag-toggle-on {
+  color: var(--color-accent) !important;
+  fill: var(--color-accent) !important;
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent) !important;
 }
 
 .tdag-glyph-labels {

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react';
 import { X } from 'lucide-react';
 import { useStore } from '../store';
+import { useUiStore } from '../lib/ui-store';
 import { routeEdge } from '../lib/edge-path';
 import { walkUpAncestors } from '../lib/graph';
 import { referenceBlockContent } from '../store/context-builder';
@@ -28,6 +29,9 @@ export default function ThoughtEdgeView({
   const nodes = useStore((s) => s.nodes);
   const edges = useStore((s) => s.edges);
   const t = useT();
+  // One global switch mutes the flow dots on EVERY edge at once: the arrows
+  // stay lit and keep their direction, only the gliding stops.
+  const flowAnim = useUiStore((s) => s.edgeFlow);
 
   // The line kind IS the context weight: dashed = summary reference, solid
   // = full wiring (files included). Selected, the edge wears a chip that
@@ -101,7 +105,7 @@ export default function ThoughtEdgeView({
           </div>
         </EdgeLabelRenderer>
       )}
-      {data?.focusRole === 'path' && (
+      {data?.focusRole === 'path' && flowAnim && (
         // Context Focus feed line: bright dots gliding INSIDE the solid
         // stroke (narrower than it, so the line never reads as dashed —
         // dashed is taken: references)

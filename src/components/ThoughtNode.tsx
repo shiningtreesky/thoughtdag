@@ -381,6 +381,16 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
     attempt();
     return () => cancelAnimationFrame(raf);
   }, [id, zoomedOut, data.isCollapsed]);
+  // Streaming text fills the sheet instead of a tail window, so it grows past
+  // one page: follow it to the bottom while the answer is being written. A
+  // reader who scrolls up to re-read what already streamed keeps the wheel —
+  // following resumes the moment they come back down to the tail.
+  const stickBottom = useRef(true);
+  useEffect(() => {
+    if (!data.isLoading) { stickBottom.current = true; return; }
+    const el = flowRef.current;
+    if (el && stickBottom.current) el.scrollTop = el.scrollHeight;
+  }, [data.isLoading, data.response, data.reasoning, data.agentTrace]);
   const takeawayType = data.summaryTypes?.[data.responseIndex] ?? undefined;
   const takeawayConfidence = data.summaryTypeConfidences?.[data.responseIndex] ?? undefined;
   const conclusive = data.summaryConclusiveness?.[data.responseIndex] ?? undefined;
@@ -595,9 +605,6 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
       {/* Header */}
       <div className="shrink-0 flex items-center justify-between px-8 py-3.5 border-b border-line cursor-grab active:cursor-grabbing drag-handle">
         <div className="flex items-center gap-2">
-          <button onClick={() => toggleCollapse(id)} className={`hover:bg-wash rounded-lg w-7 h-7 flex items-center justify-center transition-all text-sm font-bold ${data.isCollapsed ? 'text-accent bg-accent/10' : 'text-ink-faint'}`}>
-            {data.isCollapsed ? <ChevronRight size={18} strokeWidth={1.75} /> : <ChevronDown size={18} strokeWidth={1.75} />}
-          </button>
           <span className="text-xs text-ink-faint font-mono">{data.tokenCount} tok</span>
           {toolMarks.length > 0 && (
             <span className="text-2xs text-ink-muted shrink-0 select-none" title={marksTitle} data-tool-marks>{marksLine}</span>
@@ -677,6 +684,9 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
           })()}
         </div>
         <div className="flex items-center gap-0.5">
+          <button onClick={(e) => { e.stopPropagation(); toggleCollapse(id); }} title={t('node.collapse')} className={`hover:bg-wash rounded-lg w-7 h-7 flex items-center justify-center transition-all text-sm font-bold ${data.isCollapsed ? 'text-accent bg-accent/10' : 'text-ink-faint'}`}>
+            {data.isCollapsed ? <ChevronRight size={18} strokeWidth={1.75} /> : <ChevronDown size={18} strokeWidth={1.75} />}
+          </button>
           {data.isLoading && (
             <button
               onClick={(e) => { e.stopPropagation(); stopGeneration(id); }}
@@ -737,7 +747,11 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
               window is worse than scrolling the page once. */}
           <div
             ref={flowRef}
-            onScroll={(e) => setScrollOffset(id, e.currentTarget.scrollTop)}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              stickBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+              setScrollOffset(id, el.scrollTop);
+            }}
             className="flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto nopan nowheel"
             data-page-flow
           >
@@ -848,44 +862,47 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
             ) : data.agentTrace && data.agentTrace.length > 0 && (!data.response || data.restreaming) ? (
               // An agent's steps and, between them, the model's thinking: the
               // trace alone reads as a tool log; the thinking says what it is
-              // for. Live tail only — the whole text opens on the finished node.
+              // for. The live text fills the sheet's body and the page-flow
+              // scrolls it — no tail window, so the reader sees what is being
+              // written rather than a 96px sliver of its end.
               <div className="flex flex-col gap-1.5">
                 <AgentTrace entries={data.agentTrace} compact />
                 {data.reasoning && (
-                  <div className="px-3 py-2 bg-wash/70 rounded-xl max-h-[96px] overflow-hidden flex flex-col justify-end" data-node-reasoning-live>
+                  <div className="px-3 py-2 bg-wash/70 rounded-xl" data-node-reasoning-live>
                     <div className="text-2xs text-ink-faint mb-0.5">💭 {t('node.reasoningLive')}</div>
                     <div className="text-xs text-ink-faint italic leading-relaxed whitespace-pre-wrap break-words">
-                      {data.reasoning.length > 200 ? '…' + data.reasoning.slice(-200) : data.reasoning}
+                      {data.reasoning}
                     </div>
                   </div>
                 )}
               </div>
             ) : data.response && !data.restreaming ? (
-              // Streaming: show the live tail of the response on the canvas.
+              // Streaming: the answer takes the sheet's body in full, and the
+              // page-flow scrolls it so the newest words stay on the page.
               // While the "response" is still a tool's placeholder line
               // (the answer has not started), the thinking that led to the
               // tool stays visible beneath it.
               <div className="flex flex-col gap-1.5">
-                <div className="text-sm text-ink-muted leading-relaxed px-3 py-2.5 bg-surface rounded-xl max-h-[180px] overflow-hidden flex flex-col justify-end whitespace-pre-wrap break-words">
-                  {data.response.length > 400 ? '…' + data.response.slice(-400) : data.response}
+                <div className="text-sm text-ink-muted leading-relaxed px-3 py-2.5 bg-surface rounded-xl whitespace-pre-wrap break-words">
+                  {data.response}
                   <span className="inline-block w-2 h-4 bg-accent animate-pulse rounded-sm" />
                 </div>
                 {data.reasoning && TOOL_PLACEHOLDER.test(data.response) && (
-                  <div className="px-3 py-2 bg-wash/70 rounded-xl max-h-[96px] overflow-hidden flex flex-col justify-end" data-node-reasoning-live>
+                  <div className="px-3 py-2 bg-wash/70 rounded-xl" data-node-reasoning-live>
                     <div className="text-2xs text-ink-faint mb-0.5">💭 {t('node.reasoningLive')}</div>
                     <div className="text-xs text-ink-faint italic leading-relaxed whitespace-pre-wrap break-words">
-                      {data.reasoning.length > 200 ? '…' + data.reasoning.slice(-200) : data.reasoning}
+                      {data.reasoning}
                     </div>
                   </div>
                 )}
               </div>
             ) : data.reasoning ? (
-              // Reasoning models think before they answer — show the live
-              // tail of the thinking, visually quieter than an answer
-              <div className="px-3 py-2.5 bg-wash/70 rounded-xl max-h-[140px] overflow-hidden flex flex-col justify-end" data-node-reasoning-live>
+              // Reasoning models think before they answer — the live thinking
+              // fills the sheet, visually quieter than an answer
+              <div className="px-3 py-2.5 bg-wash/70 rounded-xl" data-node-reasoning-live>
                 <div className="text-2xs text-ink-faint mb-1">💭 {t('node.reasoningLive')}</div>
                 <div className="text-xs text-ink-faint italic leading-relaxed whitespace-pre-wrap break-words">
-                  {data.reasoning.length > 300 ? '…' + data.reasoning.slice(-300) : data.reasoning}
+                  {data.reasoning}
                 </div>
               </div>
             ) : (

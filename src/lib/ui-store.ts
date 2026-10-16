@@ -80,6 +80,12 @@ interface UiState {
       one hover tooltip at a time. Only meaningful at the glyph tier. */
   glyphLabels: boolean;
   setGlyphLabels: (on: boolean) => void;
+  /** Canvas flow: the bright dots gliding inside a lit ancestor-chain edge.
+      Global — one switch stops every sheet-to-sheet connection from animating
+      while the arrows themselves (colour, weight, direction, dash meaning)
+      stay exactly as they are, so the flow is still readable. */
+  edgeFlow: boolean;
+  setEdgeFlow: (on: boolean) => void;
   /** View mode: hide frames + unlinked content nodes (annotation layer off). */
   annotationsHidden: boolean;
   /** Canvas wheel: false (default) zooms, true pans (trackpad style; zoom by pinch or ⌘/Ctrl + wheel). */
@@ -355,6 +361,11 @@ export const useUiStore = create<UiState>((set, get) => ({
     localStorage.setItem('thoughtdag.glyphLabels', on ? 'on' : 'off');
     set({ glyphLabels: on });
   },
+  edgeFlow: localStorage.getItem('thoughtdag.edgeFlow') !== 'off',
+  setEdgeFlow: (on) => {
+    localStorage.setItem('thoughtdag.edgeFlow', on ? 'on' : 'off');
+    set({ edgeFlow: on });
+  },
   memories: (() => {
     try {
       const raw = localStorage.getItem('thoughtdag.memory');
@@ -397,7 +408,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   pingModelPicker: () => set((s) => ({ modelPickerPing: s.modelPickerPing + 1 })),
   responseViewerNodeId: null,
   setResponseViewerNodeId: (id) => set({ responseViewerNodeId: id }),
-  autoReader: localStorage.getItem(AUTO_READER_KEY) !== 'off',
+  autoReader: localStorage.getItem(AUTO_READER_KEY) === 'on',
   setAutoReader: (on) => {
     localStorage.setItem(AUTO_READER_KEY, on ? 'on' : 'off');
     set({ autoReader: on });

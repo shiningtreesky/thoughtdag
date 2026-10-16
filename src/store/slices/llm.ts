@@ -113,11 +113,9 @@ export const createLlmSlice: StateCreator<StoreState, [], [], LlmSlice> = (set, 
       }
       if (wired > 0) toast('info', fmt(t('mention.wired'), { n: wired }), 6000);
     }
-    // Auto-collapse parent node when creating a child
-    const updatedNodes = parentId
-      ? get().nodes.map((n) => n.id === parentId ? { ...n, data: { ...n.data, isCollapsed: true } } : n)
-      : get().nodes;
-    const newNodes = autoLayout([...updatedNodes, newNode], newEdges);
+    // Folding is the user's call alone: spawning a child never folds the
+    // parent back up.
+    const newNodes = autoLayout([...get().nodes, newNode], newEdges);
     set({ nodes: newNodes, edges: newEdges, selectedNodeId: id });
     // the ask opened its own reading surface (the material reader's rail): leave it there
     if (!opts.noReader) openReaderForAnswer(id);
@@ -251,7 +249,7 @@ export const createLlmSlice: StateCreator<StoreState, [], [], LlmSlice> = (set, 
     });
 
     const allEdges = [...get().edges, ...newEdges];
-    const merged = [...get().nodes.map((n) => (n.id === parentId && !follow ? { ...n, data: { ...n.data, isCollapsed: true } } : n)), ...newNodes];
+    const merged = [...get().nodes, ...newNodes];
     const allNodes = follow ? merged : autoLayout(merged, allEdges);
     set({ nodes: allNodes, edges: allEdges, selectedNodeId: null, selectedNodeIds: [] });
 

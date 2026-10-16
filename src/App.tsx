@@ -16,7 +16,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import 'highlight.js/styles/github.css';
-import { ArrowRight, BookOpen, Bot, Brain, Check, CircleHelp, Download, Drama, Eye, FileText, FolderSync, Frame, GitBranch, Hand, Highlighter, History as HistoryIcon, ImageDown, KeyRound, LayoutGrid, ListRestart, Loader2, MessageCircleQuestion, Maximize2, Minimize2, MoreHorizontal, Paperclip, Redo2, Rewind, Scissors, Search, Share2, SquareTerminal, Star, Stethoscope, StickyNote, Tag, Trash2, Undo2, Workflow, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Bot, Brain, Check, CircleHelp, Download, Drama, Eye, FileText, FolderSync, Frame, GitBranch, Hand, Highlighter, History as HistoryIcon, ImageDown, KeyRound, LayoutGrid, ListRestart, Loader2, MessageCircleQuestion, Maximize2, Minimize2, MoreHorizontal, Paperclip, Redo2, Rewind, Scissors, Search, Share2, SquareTerminal, Star, Stethoscope, StickyNote, Tag, Trash2, Undo2, Waypoints, Workflow, X } from 'lucide-react';
 import './index.css';
 import ThoughtNode from './components/ThoughtNode';
 import ParadigmNode from './components/ParadigmNode';
@@ -540,7 +540,7 @@ function Canvas() {
     if (nodes.length > prevNodeCount.current && rfInstance.current) {
       const newest = nodes[nodes.length - 1];
       if (newest) {
-        setTimeout(() => centerNode(newest, { zoom: 1, duration: 400 }), 100);
+        setTimeout(() => centerNode(newest, { duration: 400 }), 100);
       }
     }
     prevNodeCount.current = nodes.length;
@@ -1240,6 +1240,7 @@ function Canvas() {
           <PaperZoomButton />
           <ThresholdZoomButton />
           <GlyphLabelsButton />
+          <EdgeFlowButton />
         </Controls>
         {nodes.length > 0 && <MiniMap
           nodeColor={(node) => {
@@ -2378,6 +2379,31 @@ function GlyphLabelsButton() {
       onClick={(e) => { e.stopPropagation(); setOn(!on); }}
     >
       <Tag size={14} strokeWidth={1.75} />
+    </button>
+  );
+}
+
+// Flow dots: the bright dots that glide inside a lit ancestor-chain arrow
+// while you read a sheet. Some people read with them fine, some cannot hold
+// attention while they move. This mutes ALL of them at once — every sheet to
+// sheet connection, no per-sheet clicking. The arrows themselves (colour,
+// weight, dash meaning, arrowhead, direction) are untouched, so the context
+// flow stays completely readable with nothing moving on it.
+function EdgeFlowButton() {
+  const t = useT();
+  const on = useUiStore((s) => s.edgeFlow);
+  const setOn = useUiStore((s) => s.setEdgeFlow);
+  const label = on ? t('controls.edgeFlow') : t('controls.edgeFlowOff');
+  return (
+    <button
+      type="button"
+      className={`react-flow__controls-button tdag-edge-flow${on ? ' tdag-toggle-on' : ''}`}
+      title={label}
+      aria-label={label}
+      aria-pressed={on}
+      onClick={(e) => { e.stopPropagation(); setOn(!on); }}
+    >
+      <Waypoints size={14} strokeWidth={1.75} />
     </button>
   );
 }
