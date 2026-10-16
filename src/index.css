@@ -249,7 +249,7 @@ code, pre {
   background: color-mix(in srgb, var(--color-accent) 12%, transparent) !important;
 }
 
-.tdag-half-zoom {
+.tdag-threshold-zoom {
   order: 2;
   border-bottom: 1px solid var(--color-line) !important;
   font-family: var(--font-mono);
@@ -259,7 +259,7 @@ code, pre {
   color: var(--color-ink-muted) !important;
 }
 
-.tdag-half-zoom:hover {
+.tdag-threshold-zoom:hover {
   color: var(--color-accent) !important;
 }
 
@@ -760,11 +760,21 @@ body.tdag-connecting, body.tdag-connecting * {
   outline-offset: 3px;
 }
 /* Glyph seals keep a FIXED SCREEN SIZE (POI style, like map pins): the
-   scale cancels the viewport zoom below the glyph threshold (0.32), so
-   zooming further out tightens the map instead of shrinking the seals.
-   At zoom = 0.32 the factor is exactly 1 — the tier transition is seamless. */
+   scale cancels the viewport zoom below the glyph threshold, so zooming
+   further out tightens the map instead of shrinking the seals. The anchor is
+   0.25 — the zoom at which the glyph tier is entered from the map tier — so
+   the factor is exactly 1 there and the seal does not pop when the tier flips. */
+/* 10% is the FLOOR of the glyph counter-scale. Above it a seal and its caption
+   hold a constant screen size; below it they shrink with the canvas, so a deep
+   zoom reads as a map of structure instead of as a pile of full-size labels
+   colliding with each other. Held in a variable so every glyph rule clamps the
+   same way and cannot drift apart. */
+[data-zoom-tier='glyph'] {
+  --tdag-glyph-zoom: max(0.1, var(--tdag-zoom, 0.25));
+}
+
 [data-zoom-tier='glyph'] [data-glyph-node] > span {
-  transform: scale(calc(0.32 / var(--tdag-zoom, 0.32)));
+  transform: scale(calc(0.25 / var(--tdag-glyph-zoom, 0.25)));
 }
 
 /* Glyph captions: the seal's question as a real label rather than a hover
@@ -778,23 +788,23 @@ body.tdag-connecting, body.tdag-connecting * {
   /* translate-centred on the row, NOT left-0/right-0: stretched to the node's
      own width the caption would be ellipsised down to three characters. */
   width: max-content;
-  max-width: calc(340px / var(--tdag-zoom, 0.32));
+  max-width: calc(340px / var(--tdag-glyph-zoom, 0.25));
   transform: translateX(-50%);
   text-align: center;
 }
 
 [data-zoom-tier='glyph'] [data-glyph-label] {
   display: inline-block;
-  margin-top: calc(5px / var(--tdag-zoom, 0.32));
-  padding: calc(3px / var(--tdag-zoom, 0.32)) calc(8px / var(--tdag-zoom, 0.32));
+  margin-top: calc(5px / var(--tdag-glyph-zoom, 0.25));
+  padding: calc(3px / var(--tdag-glyph-zoom, 0.25)) calc(8px / var(--tdag-glyph-zoom, 0.25));
   border-style: solid;
   border-color: var(--color-line);
-  border-width: calc(1px / var(--tdag-zoom, 0.32));
-  border-radius: calc(6px / var(--tdag-zoom, 0.32));
+  border-width: calc(1px / var(--tdag-glyph-zoom, 0.25));
+  border-radius: calc(6px / var(--tdag-glyph-zoom, 0.25));
   background: var(--color-card);
-  box-shadow: 0 0 calc(4px / var(--tdag-zoom, 0.32)) rgba(0, 0, 0, 0.14);
+  box-shadow: 0 0 calc(4px / var(--tdag-glyph-zoom, 0.25)) rgba(0, 0, 0, 0.14);
   color: var(--color-ink-muted);
-  font-size: calc(13px / var(--tdag-zoom, 0.32));
+  font-size: calc(13px / var(--tdag-glyph-zoom, 0.25));
   line-height: 1.35;
   white-space: nowrap;
   max-width: 100%;
@@ -802,9 +812,11 @@ body.tdag-connecting, body.tdag-connecting * {
   text-overflow: ellipsis;
 }
 
-/* Edges thicken at glyph zoom so the skeleton stays legible at distance */
+/* Edges thicken at glyph zoom so the skeleton stays legible at distance —
+   clamped by the same floor, or below 10% the lines would stay full thickness
+   while the seals they connect shrink, and the skeleton would swallow the map. */
 [data-zoom-tier='glyph'] .react-flow__edge path.react-flow__edge-path {
-  stroke-width: calc(7px * 0.32 / var(--tdag-zoom, 0.32)) !important;
+  stroke-width: calc(7px * 0.25 / var(--tdag-glyph-zoom, 0.25)) !important;
 }
 
 /* Unbroken long tokens (URLs, DOIs, hashes) must wrap instead of escaping

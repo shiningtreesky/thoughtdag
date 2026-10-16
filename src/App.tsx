@@ -1238,7 +1238,7 @@ function Canvas() {
         <Controls position="bottom-left">
           <CanvasToneButton />
           <PaperZoomButton />
-          <HalfZoomButton />
+          <ThresholdZoomButton />
           <GlyphLabelsButton />
         </Controls>
         {nodes.length > 0 && <MiniMap
@@ -2329,28 +2329,28 @@ function PaperZoomButton() {
   );
 }
 
-// 0.5 — the threshold level. Zoom is set to exactly 0.5, which is the boundary
-// the tiers were built around: at 0.5 a sheet is still a sheet (it unfolds into
-// plaques only below it), at half the paper's linear size. Unlike 1:1 this is
-// never a framing move - the viewport centre is the anchor and a selection is
-// ignored, because at this level you are choosing HOW MUCH of the canvas you
-// see, not which page to read.
-function HalfZoomButton() {
+// 0.4 — the threshold level. Zoom is set to exactly 0.4, the boundary the tiers
+// are built around: at 0.4 a sheet is still a sheet (it unfolds into plaques
+// only below it), at 40% of the paper's linear size. Unlike 1:1 this is never a
+// framing move - the viewport centre is the anchor and a selection is ignored,
+// because at this level you are choosing HOW MUCH of the canvas you see, not
+// which page to read.
+function ThresholdZoomButton() {
   const rf = useReactFlow();
   const t = useT();
   return (
     <button
       type="button"
-      className="react-flow__controls-button tdag-half-zoom"
-      title={t('controls.halfZoom')}
-      aria-label={t('controls.halfZoom')}
+      className="react-flow__controls-button tdag-threshold-zoom"
+      title={t('controls.thresholdZoom')}
+      aria-label={t('controls.thresholdZoom')}
       onClick={(e) => {
         e.stopPropagation();
         saveReturnView(rf.getViewport());
-        void rf.zoomTo(0.5, { duration: 300 });
+        void rf.zoomTo(0.4, { duration: 300 });
       }}
     >
-      0.5
+      0.4
     </button>
   );
 }
