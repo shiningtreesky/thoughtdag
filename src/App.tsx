@@ -260,10 +260,10 @@ function Canvas() {
     const cs = getComputedStyle(document.documentElement);
     const ground = (cs.getPropertyValue('--canvas-bg').trim() || '#FAF9F7').replace('#', '');
     const [r, g, b] = [0, 2, 4].map((i) => parseInt(ground.slice(i, i + 2), 16));
-    // on the dim desk the hierarchy has to survive the shrink: a page reads
-    // LIGHTER than the ground, an archived page closer to it — the same order
-    // the canvas itself carries (white sheet / faded sheet / desk)
-    const dim = resolvedTheme === 'light' && canvasTone === 'dim';
+    // on the dim or black desk the hierarchy has to survive the shrink: a page
+    // reads LIGHTER than the ground, an archived page closer to it — the same
+    // order the canvas itself carries (white sheet / faded sheet / desk)
+    const dim = resolvedTheme === 'light' && canvasTone !== 'light';
     return {
       mask: `rgba(${r},${g},${b},0.7)`,
       archived: dim ? '#C9C3B8' : (cs.getPropertyValue('--color-wash').trim() || '#EFEDE9'),
@@ -745,6 +745,21 @@ function Canvas() {
           if (back) {
             e.preventDefault();
             rfInstance.current?.setViewport(back, { duration: 300 });
+          }
+        }
+      }
+      // D: the keyboard twin of the 0.4 control — the whole canvas goes to the
+      // threshold tier, anchored on the viewport centre. Like the button it
+      // needs no selection, and it records the camera first so Z steps back out.
+      {
+        const dTarget = e.target as HTMLElement;
+        const dTyping = dTarget.tagName === 'INPUT' || dTarget.tagName === 'TEXTAREA' || dTarget.isContentEditable;
+        if (!dTyping && !e.metaKey && !e.ctrlKey && !e.altKey && (e.key === 'd' || e.key === 'D')) {
+          const inst = rfInstance.current;
+          if (inst) {
+            e.preventDefault();
+            saveReturnView(inst.getViewport());
+            void inst.zoomTo(0.4, { duration: 300 });
           }
         }
       }
@@ -2418,9 +2433,10 @@ function CanvasToneButton() {
   const tone = useAppearance((s) => s.canvasTone);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const dark = resolved === 'dark';
-  const SWATCHES: { key: 'light' | 'dim'; label: string; hex: string }[] = [
+  const SWATCHES: { key: 'light' | 'dim' | 'black'; label: string; hex: string }[] = [
     { key: 'light', label: t('controls.canvasToneLight'), hex: '#FAF9F7' },
     { key: 'dim', label: t('controls.canvasToneDim'), hex: '#A8A39A' },
+    { key: 'black', label: t('controls.canvasToneBlack'), hex: '#0A0A0A' },
   ];
   return (
     <>

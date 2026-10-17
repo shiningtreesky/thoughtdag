@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { describeModel } from '../lib/use-models';
 import { toolFingerprint, turnComposition, footprint, conclusionOf } from '../lib/turn-insight';
 import { Handle, Position, useReactFlow, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
-import { AlertTriangle, Archive, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, GitBranch, Globe, Hourglass, Maximize2, Minimize2, Paperclip, RefreshCw, Send, Split, Square, Star, Trash2, UserRound, X, Pencil } from 'lucide-react';
+import { AlertTriangle, Archive, BookOpen, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Eye, GitBranch, Globe, Hourglass, Languages, Maximize2, Minimize2, Paperclip, RefreshCw, Send, Split, Square, Star, Trash2, UserRound, X, Pencil } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 
 /** A tool's status line standing in for the answer while it runs (see
@@ -10,6 +10,7 @@ import 'katex/dist/katex.min.css';
 const TOOL_PLACEHOLDER = /^(?:🔍|📚|🎓|🔧) [\s\S]*…$/;
 import type { ThoughtNode as ThoughtNodeType } from '../types';
 import { useStore } from '../store';
+import { llmCall } from '../lib/api';
 import { staleHiddenByJudge, currentStaleVerdict } from '../lib/stale-judge';
 import { CONCLUSIVE_SETTLED } from '../lib/judge';
 import { useZoomTier } from '../lib/use-map-mode';
@@ -65,6 +66,12 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
   const hasFanoutChildren = useStore((s) => s.edges.some((e) => e.source === id && e.data?.isBranchFromSelection));
   const [selectedText, setSelectedText] = useState('');
   const [selectionPos, setSelectionPos] = useState<{ x: number; y: number } | null>(null);
+  // Selection toolbar: the buttons sit ABOVE the marked passage, so the
+  // translation panel goes BELOW it — neither of them ever covers the text the
+  // reader just marked. selBottom is that passage's lower edge in node space.
+  const [selBottom, setSelBottom] = useState<number | null>(null);
+  const [translation, setTranslation] = useState<{ loading: boolean; text: string } | null>(null);
+  const selectedRef = useRef('');
   const inlineDraftKey = `inline:${id}`;
   const [inputValue, setInputValueState] = useState(() => useUiStore.getState().drafts[inlineDraftKey] ?? '');
   const mention = useMentions(id);
@@ -165,6 +172,11 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
     const selection = window.getSelection();
     if (selection && selection.toString().trim().length > 0 && responseRef.current?.contains(selection.anchorNode)) {
       const text = selection.toString().trim();
+      // A new mark replaces whatever translation was open; re-releasing the
+      // mouse over the SAME mark (the toolbar buttons preventDefault, so the
+      // selection survives their click) must not wipe the panel that just opened.
+      if (text !== selectedRef.current) setTranslation(null);
+      selectedRef.current = text;
       setSelectedText(text);
       const range = selection.getRangeAt(0);
       const rangeRect = range.getBoundingClientRect();
@@ -174,10 +186,16 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
           x: rangeRect.left + rangeRect.width / 2 - nodeRect.left,
           y: rangeRect.top - nodeRect.top - 48,
         });
+        setSelBottom(rangeRect.bottom - nodeRect.top + 10);
       }
     } else {
+      // Any click that leaves no selection closes the toolbar AND the
+      // translation panel — the panel is transient by design, no X needed.
+      selectedRef.current = '';
       setSelectedText('');
       setSelectionPos(null);
+      setSelBottom(null);
+      setTranslation(null);
     }
   }, []);
 
@@ -205,9 +223,36 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
   const handleHighlight = () => {
     if (!selectedText) return;
     addHighlight(id, { id: generateId(), text: selectedText });
+    selectedRef.current = '';
     setSelectedText('');
     setSelectionPos(null);
+    setSelBottom(null);
+    setTranslation(null);
     window.getSelection()?.removeAllRanges();
+  };
+
+  // Translate the marked passage in place: a transient panel under the text.
+  // It is not a node, not a canvas write and not in the undo history — it is
+  // a reading aid that dies the moment the reader clicks anywhere else.
+  // English marks go to Chinese; a mark that is already Chinese flips the
+  // direction on its own.
+  const handleTranslate = async () => {
+    const src = selectedText;
+    if (!src) return;
+    setTranslation({ loading: true, text: '' });
+    const toChinese = !/[\u4e00-\u9fff]/.test(src);
+    const order = 'Keep the original formatting (markdown, math, code). Output ONLY the translation — no commentary, no preface, no quotation marks around the whole thing.';
+    try {
+      const out = await llmCall(
+        [{ role: 'user', content: `${toChinese ? `Translate the following into Simplified Chinese. ${order}` : `Translate the following into English. ${order}`}\n\n${src}` }],
+        undefined,
+        undefined,
+        { fast: true },
+      );
+      setTranslation({ loading: false, text: out.trim() || t('node.translateEmpty') });
+    } catch {
+      setTranslation({ loading: false, text: t('node.translateFailed') });
+    }
   };
 
   const handleSubmitBranch = () => {
@@ -1104,17 +1149,18 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
           )}
 
           {/* Inline continue input — hidden while a paradigm run is in
-              progress (the structure IS the paradigm); returns on unlock */}
-          {!data.isLoading && !data.isEditingResponse && !isAwaitingAsk && !(isParadigmNode && runLocked) && !isViewerMode && selectedNodeId !== id && (
+              progress (the structure IS the paradigm); returns on unlock.
+              It shows whether or not the sheet is SELECTED: selection must
+              not swallow the follow-up, otherwise "select the sheet, then
+              ask" has no input at all. */}
+          {!data.isLoading && !data.isEditingResponse && !isAwaitingAsk && !(isParadigmNode && runLocked) && !isViewerMode && (
             <div
               className="mt-3 shrink-0 pt-3 border-t border-line relative"
               // Clicking into the continue box must not select the node. React Flow
               // selects on pointerdown, App's onSelectionChange then sets
-              // selectedNodeId WITHOUT opening the panel, and this very box is
-              // gated on `selectedNodeId !== id` — so the click unmounted the box
-              // you had just focused, focus fell to <body>, and with the panel
-              // closed there was no input left anywhere: the follow-up was
-              // unreachable. Blocking the pointer here keeps the node unselected.
+              // selectedNodeId WITHOUT opening the panel. The box no longer hides on
+              // selection, but the pointer is still blocked here so clicking in
+              // never re-wires the selection under the reader's cursor.
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
@@ -1231,7 +1277,38 @@ export default function ThoughtNode({ id, data }: NodeProps<ThoughtNodeType>) {
             >
               <Star size={14} strokeWidth={1.75} className="inline" /> {t('common.highlight')}
             </button>
+            <button
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); void handleTranslate(); }}
+              className="bg-ink/80 hover:bg-ink text-white text-xs px-3 py-1.5 rounded-lg transition-all whitespace-nowrap cursor-pointer"
+            >
+              <Languages size={14} strokeWidth={1.75} className="inline" /> {t('common.translate')}
+            </button>
           </div>
+        </div>
+      )}
+
+      {/* Translation panel — BELOW the marked passage while the toolbar sits
+          above it, so neither one ever covers the text being read. It carries
+          no close button: it is tied to the selection, and any click that
+          leaves no selection (handleTextSelection's else branch) clears it. */}
+      {selectedText && selBottom !== null && translation && selectionPos && (
+        <div
+          style={{
+            position: 'absolute',
+            left: Math.max(260, Math.min(selectionPos.x, NODE_CSS_WIDTH - 260)),
+            top: selBottom,
+            transform: 'translateX(-50%)',
+            maxWidth: 520,
+            zIndex: 9999,
+          }}
+          className="bg-card border border-accent/30 rounded-xl shadow-lg px-3 py-2.5 text-xs text-ink leading-relaxed whitespace-pre-wrap break-words animate-fade-in"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {translation.loading ? (
+            <span className="flex items-center gap-1.5 text-ink-faint">
+              <span className="animate-pulse text-accent">●</span> {t('node.translating')}
+            </span>
+          ) : translation.text}
         </div>
       )}
     </div>

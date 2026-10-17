@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Handle, NodeResizeControl, Position, useReactFlow, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
-import { BookOpen, ExternalLink, FileText, Link2, Link2Off, Loader2, MoveDiagonal2, Paperclip, RefreshCw, StickyNote, Trash2, X } from 'lucide-react';
+import { BookOpen, ExternalLink, FileText, Link2, Link2Off, Loader2, MoveDiagonal2, NotebookText, Paperclip, RefreshCw, StickyNote, Trash2, X } from 'lucide-react';
 import type { ThoughtNode as ThoughtNodeType } from '../types';
 import { useStore } from '../store';
 import { useZoomTier } from '../lib/use-map-mode';
 import { useUiStore } from '../lib/ui-store';
 import { triggerParadigmCascade } from '../store/streaming';
 import { extractImage, fetchLinkIntoNode, ingestFiles } from '../lib/content';
-import { FILE_INPUT_ACCEPT } from '../lib/attachments';
+import { FILE_INPUT_ACCEPT, TEXT_EXTENSIONS } from '../lib/attachments';
 import { Markdown } from './Markdown';
 import ZoomText from './ZoomText';
 import { useLocalLadder } from '../lib/local-ladder-cache';
 import { usePlaqueClip } from '../lib/use-plaque-clip';
-import { countTokens } from '../utils';
+import { countTokens, generateId } from '../utils';
 import { useT, fmt } from '../i18n';
 import { isViewerMode } from '../lib/viewer';
 import { recallSourceLine } from '../lib/recall';
@@ -72,6 +72,44 @@ export default function ContentNode({ id, data, selected }: NodeProps<ThoughtNod
 
   const attachments = data.attachments || [];
   const linkLoading = kind === 'link' && !data.question && !data.linkTitle?.startsWith('⚠');
+
+  // Material → page: a text document on the canvas can be promoted to an
+  // ordinary A4 sheet beside the card — the same 794×1123 page a turn wears,
+  // so a long README reads as a page instead of a chip row. The card and its
+  // wires stay untouched (provenance is not re-created), and nothing is
+  // generated: the sheet carries the text as its own body.
+  const textAtt = attachments.find((a) => a.type.startsWith('text/') || TEXT_EXTENSIONS.test(a.name));
+  const toSheet = () => {
+    const body = (textAtt?.content || textAtt?.extractedText || '').trim();
+    if (!textAtt || !body) return;
+    const heading = body.match(/^\s*#+\s*([^\n]+)\n?/);
+    const title = (heading?.[1] ?? '').trim() || textAtt.name;
+    const st = useStore.getState();
+    const here = st.nodes.find((n) => n.id === id);
+    const sheet: ThoughtNodeType = {
+      id: generateId(),
+      type: 'thought',
+      position: {
+        x: (here?.position.x ?? 0) + (here?.measured?.width ?? 340) + 60,
+        y: here?.position.y ?? 0,
+      },
+      dragHandle: '.drag-handle',
+      data: {
+        question: title,
+        response: body,
+        responses: [body],
+        responseIndex: 0,
+        isCollapsed: false, isEditing: false, isEditingResponse: false, isLoading: false,
+        tokenCount: countTokens(body),
+        highlights: [], highlightMode: 'tag',
+        attachments: [], excludedAttachmentIds: [], includedAttachmentIds: [],
+        roleMode: 'inherit', isRoot: false, isBranch: false,
+      },
+    };
+    st.pushHistory();
+    st.setNodes([...st.nodes, sheet]);
+    st.setSelectedNodeId(sheet.id);
+  };
 
   // Clip provenance: an edge-less clip finds its source through anchor.attId
   const clipAnchor = data.anchor?.attId ? data.anchor : undefined;
@@ -409,6 +447,15 @@ export default function ContentNode({ id, data, selected }: NodeProps<ThoughtNod
                 </div>
               )
             ))}
+            {textAtt && (
+              <button
+                onClick={(e) => { e.stopPropagation(); toSheet(); }}
+                className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-line py-2 text-xs text-ink-muted hover:text-accent hover:border-accent/40 hover:bg-accent/5 transition-colors"
+                title={t('content.toSheetTitle')}
+              >
+                <NotebookText size={13} strokeWidth={1.75} className="shrink-0" /> {t('content.toSheet')}
+              </button>
+            )}
             <button
               onClick={() => fileRef.current?.click()}
               className={`w-full border-2 border-dashed border-line hover:border-accent/40 hover:bg-accent/5 rounded-lg text-xs text-ink-faint hover:text-ink-muted transition-colors ${attachments.length === 0 ? 'py-6' : 'py-2'}`}

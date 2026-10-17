@@ -186,6 +186,19 @@
   --canvas-grid-major: rgba(26, 26, 26, 0.20);
 }
 
+/* black desk: the ground goes near-black so a wall of white sheets sits on a
+   dark stage. LIGHT theme only, same scoping as dim. TEXTURE OFF: specks and
+   grid lines that read as "a shade darker than the desk" have nothing darker
+   to be against here, so they are switched off instead of re-anchored. The
+   sheets are still untouched — --color-card stays white, --color-surface stays
+   the paper's inner tint. */
+:root[data-canvas-tone='black']:not([data-theme='dark']) {
+  --canvas-bg: #0A0A0A;
+  --canvas-dot: transparent;
+  --canvas-grid-fine: transparent;
+  --canvas-grid-major: transparent;
+}
+
 html, body, #root {
   width: 100%;
   height: 100%;

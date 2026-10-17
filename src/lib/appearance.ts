@@ -3,7 +3,7 @@ import { create } from 'zustand';
 // Appearance: three axes.
 //   lighting     — light / dark / system  → swaps the whole token set (data-theme)
 //   paper        — plain / grid           → canvas texture + component dialect (data-paper)
-//   canvasTone   — light / dim            → the canvas ground colour alone (data-canvas-tone)
+//   canvasTone   — light / dim / black     → the canvas ground colour alone (data-canvas-tone)
 // The tone is a LIGHT-theme option: a dark canvas is already dark, so the dim
 // override is scoped to light and the control is disabled otherwise. It touches
 // the canvas ground and the minimap only — the sheets stay --color-card white.
@@ -12,7 +12,7 @@ import { create } from 'zustand';
 
 export type Lighting = 'light' | 'dark' | 'system';
 export type Paper = 'plain' | 'grid';
-export type CanvasTone = 'light' | 'dim';
+export type CanvasTone = 'light' | 'dim' | 'black';
 
 const LS_LIGHTING = 'thoughtdag.lighting';
 const LS_PAPER = 'thoughtdag.paper';
